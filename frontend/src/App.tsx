@@ -1,19 +1,48 @@
+import { useState } from "react";
+import { listings, myListings } from "./data";
+import SignUp from "./screens/SignUp";
+import Home from "./screens/Home";
+import Search from "./screens/Search";
+import ListingDetail from "./screens/Listing";
+import PostTicket from "./screens/PostTicket";
+import Chat from "./screens/Chat";
+import Confirmed from "./screens/Confirmed";
+import Profile from "./screens/Profile";
+import Rate from "./screens/Rate";
+
+export type Screen =
+  | { name: "signup" }
+  | { name: "home" }
+  | { name: "search" }
+  | { name: "post" }
+  | { name: "profile" }
+  | { name: "listing"; id: string }
+  | { name: "chat"; id: string }
+  | { name: "confirmed"; id: string }
+  | { name: "rate"; id: string };
+
+const all = [...listings, ...myListings];
+const byId = (id: string) => all.find((l) => l.id === id) ?? listings[0];
+
 function App() {
+  const [screen, setScreen] = useState<Screen>({ name: "signup" });
+  const go = (s: Screen) => setScreen(s);
+
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-      }}
-    >
-      <h1>Hello Cloudflare 🚀</h1>
-
-      <p>My first deployment.</p>
-
-      <button>Coming Soon</button>
+    <div className="phone">
+      {screen.name === "signup" && <SignUp onDone={() => go({ name: "home" })} />}
+      {screen.name === "home" && <Home go={go} />}
+      {screen.name === "search" && <Search go={go} />}
+      {screen.name === "post" && <PostTicket go={go} />}
+      {screen.name === "profile" && <Profile go={go} />}
+      {screen.name === "listing" && (
+        <ListingDetail listing={byId(screen.id)} go={go} />
+      )}
+      {screen.name === "chat" && <Chat listing={byId(screen.id)} go={go} />}
+      {screen.name === "confirmed" && (
+        <Confirmed listing={byId(screen.id)} go={go} />
+      )}
+      {screen.name === "rate" && <Rate listing={byId(screen.id)} go={go} />}
     </div>
   );
 }
