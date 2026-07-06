@@ -1,0 +1,20 @@
+{
+  "name": "swapmyshow-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc -p tsconfig.json",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.12.28"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@types/node": "^22.20.0",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.107.0"
+  }
+}

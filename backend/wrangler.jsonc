@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "swapmyshow-backend",
+	"main": "dist/index.js",
+	"compatibility_date": "2025-07-06",
+	"workers_dev": true,
+	"build": {
+		"command": "npm run build"
+	},
+	"vars": {
+		"APP_NAME": "SwapMyShow API",
+		"APP_VERSION": "1.0.0",
+		"ENVIRONMENT": "development"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "swapmyshow-db",
+			"database_id": "94df068d-0b98-426c-a408-3fdf8c28a8c7",
+			"remote": true
+		}
+	]
+}
