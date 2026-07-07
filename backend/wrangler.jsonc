@@ -1,36 +1,52 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "swapmyshow-backend",
-	"main": "dist/index.js",
-	"compatibility_date": "2025-07-06",
-	"workers_dev": true,
-	"build": {
-		"command": "npm run build"
-	},
-	// Non-secret vars. Secrets (set with `wrangler secret put <NAME>`):
-	//   SESSION_SECRET  — signs our session tokens (>= 32 random chars)
-	//   BREVO_API_KEY   — Brevo HTTP API key for sending OTP emails
-	// GOOGLE_CLIENT_ID is public (it also ships in the frontend bundle) but is
-	// kept here so the "aud" check has a single source of truth. Replace the
-	// placeholder with your real OAuth Web client id before deploying.
-	// OTP_FROM_EMAIL must be a sender verified in your Brevo account.
-	"vars": {
-		"APP_NAME": "SwapMyShow API",
-		"APP_VERSION": "1.0.0",
-		"ENVIRONMENT": "development",
-		"ALLOWED_ORIGINS": "http://localhost:5173,https://swapmyshow.pages.dev",
-		"GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
-		"SESSION_TTL_DAYS": "7",
-		"OTP_FROM_EMAIL": "no-reply@your-domain.com",
-		"OTP_FROM_NAME": "SwapMyShow",
-		"OTP_TTL_MINUTES": "10"
-	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "swapmyshow-db",
-			"database_id": "94df068d-0b98-426c-a408-3fdf8c28a8c7",
-			"remote": true
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "swapmyshow-backend",
+  "main": "dist/index.js",
+  "compatibility_date": "2025-07-06",
+  "workers_dev": true,
+
+  "build": {
+    "command": "npm run build"
+  },
+
+  // Secrets (set using `wrangler secret put`)
+  // SESSION_SECRET
+  // BREVO_API_KEY
+
+  "vars": {
+    "APP_NAME": "SwapMyShow API",
+    "APP_VERSION": "1.0.0",
+
+    // Production mode
+    "ENVIRONMENT": "production",
+
+    // Frontend URLs allowed to call the backend
+    // Keep localhost if you still want local development.
+    "ALLOWED_ORIGINS": "http://localhost:5173,https://swapmyshow.pages.dev",
+
+    // Google OAuth Client ID
+    // If not using Google login yet, leave the placeholder.
+    "GOOGLE_CLIENT_ID": "78778573077-cu6hohg3rushj61nnrqonfafdr85cthd.apps.googleusercontent.com",
+
+    // Session duration
+    "SESSION_TTL_DAYS": "7",
+
+    // Must be a VERIFIED sender in Brevo
+    "OTP_FROM_EMAIL": "swapmyshow@gmail.com",
+
+    // Sender name shown in the email
+    "OTP_FROM_NAME": "SwapMyShow",
+
+    // OTP expiry time
+    "OTP_TTL_MINUTES": "10"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "swapmyshow-db",
+      "database_id": "94df068d-0b98-426c-a408-3fdf8c28a8c7",
+      "remote": true
+    }
+  ]
 }
