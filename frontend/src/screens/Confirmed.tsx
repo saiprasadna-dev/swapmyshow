@@ -1,17 +1,51 @@
-import { useState } from "react";
-import type { Listing } from "../data";
+import { useEffect, useState } from "react";
 import { inr } from "../data";
+import { fetchSwap, advanceSwap, type SwapView } from "../apiClient";
 import type { Screen } from "../App";
 
 export default function Confirmed({
-  listing,
+  swapId,
   go,
 }: {
-  listing: Listing;
+  swapId: number;
   go: (s: Screen) => void;
 }) {
+  const [swap, setSwap] = useState<SwapView | null>(null);
   const [transferred, setTransferred] = useState(false);
-  const l = listing;
+
+  useEffect(() => {
+    let active = true;
+    fetchSwap(swapId)
+      .then((s) => {
+        if (!active) return;
+        setSwap(s);
+        setTransferred(s.sellerMarkedTransferred || s.step === "done");
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [swapId]);
+
+  const markTransferred = async () => {
+    setTransferred(true);
+    try {
+      const updated = await advanceSwap(swapId, "transfer");
+      setSwap(updated);
+    } catch {
+      setTransferred(false);
+    }
+  };
+
+  if (!swap) {
+    return (
+      <div className="screen no-nav" style={{ justifyContent: "center" }}>
+        <p className="small muted" style={{ textAlign: "center" }}>Loading…</p>
+      </div>
+    );
+  }
+
+  const l = swap.listing;
 
   return (
     <div className="screen no-nav" style={{ justifyContent: "center", gap: 16, textAlign: "center" }}>
@@ -21,7 +55,7 @@ export default function Confirmed({
       <div>
         <h1 style={{ fontSize: 24 }}>Swap confirmed!</h1>
         <p className="muted" style={{ margin: "6px 0 0" }}>
-          Now head off the ticket in chat &amp; you're set.
+          Now hand off the ticket in chat &amp; you're set.
         </p>
       </div>
 
@@ -30,7 +64,7 @@ export default function Confirmed({
           <span>
             {l.title} · <span className="seat-code">{l.seats.join("–")}</span>
           </span>
-          <span className="price">{inr(l.price)}</span>
+          <span className="price">{inr(swap.agreedPrice)}</span>
         </div>
         <hr className="tear" />
         <div className="row" style={{ gap: 8 }}>
@@ -44,13 +78,13 @@ export default function Confirmed({
       <div className="stack">
         <button
           className="btn btn-primary"
-          onClick={() => setTransferred(true)}
+          onClick={markTransferred}
           disabled={transferred}
           style={transferred ? { background: "var(--trust)", boxShadow: "none" } : undefined}
         >
           {transferred ? "✓ Marked as transferred" : "Mark as transferred"}
         </button>
-        <button className="btn btn-outline" onClick={() => go({ name: "rate", id: l.id })}>
+        <button className="btn btn-outline" onClick={() => go({ name: "rate", swapId })}>
           Rate this swap
         </button>
       </div>
