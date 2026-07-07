@@ -87,8 +87,11 @@ textarea {
 /* Tablets & laptops: instead of a bare 430px column on a blank page,
    render the app as a centred device frame on a branded backdrop.
    The frame has a fixed height and each screen scrolls inside it,
-   so the UI fits any viewport without ever showing the raw column. */
-@media (min-width: 600px) {
+   so the UI fits any viewport without ever showing the raw column.
+   Gated on a fine, hovering pointer so a phone with "Desktop site"
+   toggled on (which reports a wide viewport) still gets the real
+   full-screen mobile layout instead of a floating card. */
+@media (min-width: 600px) and (hover: hover) and (pointer: fine) {
   body {
     min-height: 100svh;
     display: flex;
@@ -537,7 +540,7 @@ input[type="range"] {
 }
 /* inside the device frame, pin the nav to the frame's bottom edge
    instead of the viewport so it tracks the app card, not the page */
-@media (min-width: 600px) {
+@media (min-width: 600px) and (hover: hover) and (pointer: fine) {
   .bottom-nav {
     position: absolute;
     left: 0;
