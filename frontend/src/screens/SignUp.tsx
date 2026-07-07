@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Verified } from "../components";
-import { GoogleSignInButton, type GoogleUser } from "../auth";
+import { GoogleSignInButton } from "../auth";
+import type { AuthUser } from "../authClient";
 
 export default function SignUp({
   onDone,
   onGoogle,
 }: {
   onDone: () => void;
-  onGoogle: (user: GoogleUser) => void;
+  onGoogle: (user: AuthUser) => void;
 }) {
   const [phone, setPhone] = useState("");
   return (

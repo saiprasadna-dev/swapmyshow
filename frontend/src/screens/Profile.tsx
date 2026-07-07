@@ -2,16 +2,18 @@ import { useState } from "react";
 import { me, myListings, listings } from "../data";
 import { BottomNav, TicketCard, Verified } from "../components";
 import type { Screen } from "../App";
-import type { GoogleUser } from "../auth";
+import type { AuthUser } from "../authClient";
 
 const tabs = ["Selling", "Bought", "Saved"] as const;
 
 export default function Profile({
   go,
   user,
+  onSignOut,
 }: {
   go: (s: Screen) => void;
-  user?: GoogleUser | null;
+  user?: AuthUser | null;
+  onSignOut?: () => void;
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Selling");
 
@@ -99,6 +101,16 @@ export default function Profile({
           →
         </span>
       </button>
+
+      {user && onSignOut && (
+        <button
+          className="btn btn-ghost"
+          style={{ marginTop: 12 }}
+          onClick={onSignOut}
+        >
+          Sign out
+        </button>
+      )}
 
       <BottomNav active="profile" go={go} />
     </div>

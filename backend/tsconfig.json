@@ -4,6 +4,7 @@
     "module": "ESNext",
     "lib": ["WebWorker", "ES2022"],
     "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types"],
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
