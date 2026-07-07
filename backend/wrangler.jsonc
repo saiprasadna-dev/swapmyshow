@@ -7,10 +7,18 @@
 	"build": {
 		"command": "npm run build"
 	},
+	// Non-secret vars. SESSION_SECRET is a secret — set it with:
+	//   wrangler secret put SESSION_SECRET
+	// GOOGLE_CLIENT_ID is public (it also ships in the frontend bundle) but is
+	// kept here so the "aud" check has a single source of truth. Replace the
+	// placeholder with your real OAuth Web client id before deploying.
 	"vars": {
 		"APP_NAME": "SwapMyShow API",
 		"APP_VERSION": "1.0.0",
-		"ENVIRONMENT": "development"
+		"ENVIRONMENT": "development",
+		"ALLOWED_ORIGINS": "http://localhost:5173,https://swapmyshow.pages.dev",
+		"GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+		"SESSION_TTL_DAYS": "7"
 	},
 	"d1_databases": [
 		{

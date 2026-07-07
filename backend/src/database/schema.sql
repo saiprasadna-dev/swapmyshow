@@ -5,6 +5,8 @@ CREATE TABLE users (
     name TEXT NOT NULL,
     email TEXT UNIQUE,
     phone TEXT UNIQUE,
+    google_sub TEXT UNIQUE,                   -- Google account id (sign in with Google)
+    picture TEXT,                             -- avatar URL from the identity provider
     id_verified INTEGER NOT NULL DEFAULT 0,   -- trust badges (screen 9)
     phone_verified INTEGER NOT NULL DEFAULT 0,
     rating REAL NOT NULL DEFAULT 0,           -- avg star rating

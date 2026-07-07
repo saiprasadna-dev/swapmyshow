@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { listings, myListings } from "./data";
-import type { GoogleUser } from "./auth";
+import { fetchMe, signOut, type AuthUser } from "./authClient";
 import SignUp from "./screens/SignUp";
 import Home from "./screens/Home";
 import Search from "./screens/Search";
@@ -27,8 +27,28 @@ const byId = (id: string) => all.find((l) => l.id === id) ?? listings[0];
 
 function App() {
   const [screen, setScreen] = useState<Screen>({ name: "signup" });
-  const [user, setUser] = useState<GoogleUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const go = (s: Screen) => setScreen(s);
+
+  // restore an existing session on load (verified against the backend)
+  useEffect(() => {
+    let active = true;
+    fetchMe().then((u) => {
+      if (active && u) {
+        setUser(u);
+        setScreen((s) => (s.name === "signup" ? { name: "home" } : s));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleSignOut = () => {
+    signOut();
+    setUser(null);
+    go({ name: "signup" });
+  };
 
   return (
     <div className="phone">
@@ -44,7 +64,9 @@ function App() {
       {screen.name === "home" && <Home go={go} />}
       {screen.name === "search" && <Search go={go} />}
       {screen.name === "post" && <PostTicket go={go} />}
-      {screen.name === "profile" && <Profile go={go} user={user} />}
+      {screen.name === "profile" && (
+        <Profile go={go} user={user} onSignOut={handleSignOut} />
+      )}
       {screen.name === "listing" && (
         <ListingDetail listing={byId(screen.id)} go={go} />
       )}
