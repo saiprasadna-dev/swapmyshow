@@ -75,7 +75,7 @@ textarea {
 /* ------------------------------- app frame ------------------- */
 .phone {
   width: 100%;
-  max-width: 430px;
+  max-width: 100%;
   min-height: 100svh;
   margin: 0 auto;
   background: var(--bg);
@@ -111,6 +111,8 @@ textarea {
       #eae6f5;
   }
   .phone {
+    width: 430px;
+    max-width: 430px;
     height: min(880px, calc(100svh - 56px));
     min-height: 0;
     border: 1px solid var(--line);
@@ -501,7 +503,7 @@ input[type="range"] {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 430px;
+  max-width: 100%;
   display: flex;
   background: var(--surface);
   border-top: 1px solid var(--line);
