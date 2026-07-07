@@ -46,7 +46,10 @@
       "binding": "DB",
       "database_name": "swapmyshow-db",
       "database_id": "94df068d-0b98-426c-a408-3fdf8c28a8c7",
-      "remote": true
+      "remote": true,
+      // Schema migrations live here. `npm run migrate` / `npm run deploy` apply
+      // only the not-yet-applied ones (tracked in a d1_migrations table).
+      "migrations_dir": "src/database/migrations"
     }
   ]
 }

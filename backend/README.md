@@ -66,8 +66,9 @@ When both `transfer` and `receipt` are recorded the swap is marked `done`, the
 listing flips to `sold`, and both users' `swap_count` is incremented (one atomic
 batch). Ratings recompute the ratee's average `users.rating`.
 
-The database ships seed content in `src/database/migrations/0003_seed.sql` (a few
-demo sellers + active listings) so a fresh install isn't empty.
+Optional demo content (a few sellers + active listings) lives in
+`src/database/seed.sql` — load it locally with `npm run seed:local`. It is not a
+migration, so it never runs in production.
 
 ## Google Sign-In
 
@@ -132,28 +133,72 @@ Web application**, and add your frontend origins to **Authorized JavaScript
 origins**. If `GOOGLE_CLIENT_ID`/`SESSION_SECRET` are unset the auth endpoints
 fail closed with `503` rather than accepting unverifiable tokens.
 
-### Database
+### Database & migrations
 
-A fresh database from `schema.sql` already has everything. For an existing
-database, apply the migrations in order — `0001` adds the Google columns and
-`0002` adds `users.email_verified` plus the `otp_codes` table.
+The schema is managed by **Wrangler's D1 migrations** (`migrations_dir` in
+`wrangler.jsonc`). Migration files live in `src/database/migrations/` and are
+numbered — `0001_init.sql` is the full baseline; later schema changes ship as
+new files (`0002_*.sql`, …). Wrangler records which have run in a
+`d1_migrations` table and applies only the new ones, so there's a single source
+of truth and no drift.
 
 ```sh
-# existing db — apply migrations in order
-wrangler d1 execute swapmyshow-db --remote --file src/database/migrations/0001_google_auth.sql
-wrangler d1 execute swapmyshow-db --remote --file src/database/migrations/0002_email_otp.sql
-# generate a session secret
-openssl rand -base64 48 | wrangler secret put SESSION_SECRET
-# add the Brevo key for OTP email delivery
-wrangler secret put BREVO_API_KEY
+npm run migrate         # apply pending migrations to the REMOTE (production) db
+npm run migrate:local   # apply to the local dev db
+npm run seed:local      # optional: load demo listings locally (src/database/seed.sql)
 ```
+
+`npm run deploy` runs `npm run migrate` **before** `wrangler deploy`, so every
+deployment brings the production database up to date first.
+
+**To change the schema:** add a new migration file (e.g.
+`0002_add_something.sql`) with forward-only SQL — never edit `0001_init.sql` or a
+migration that has already been applied. `npm run deploy` (or `npm run migrate`)
+applies it.
+
+`seed.sql` is demo data (sample sellers + listings). It is **not** a migration —
+it never runs in production; load it only in local/dev with `npm run seed:local`.
+
+Secrets still have to be set once per environment:
+
+```sh
+# generate a session secret (Windows/macOS/Linux, no openssl needed)
+node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+wrangler secret put SESSION_SECRET   # paste the value above
+wrangler secret put BREVO_API_KEY    # Brevo HTTP API key for emails
+```
+
+#### Adopting migrations on an already-built database (one-time)
+
+If your production database was created by hand (e.g. an earlier
+`d1 execute --file schema.sql`) rather than by these migrations, tell the
+framework the baseline is already present, so it doesn't try to recreate the
+tables — then let it apply anything newer:
+
+```sh
+# 1) if the users table predates password login, add the column it's missing:
+wrangler d1 execute swapmyshow-db --remote \
+  --command "ALTER TABLE users ADD COLUMN password_hash TEXT"
+#    (skip if it errors with "duplicate column name: password_hash")
+
+# 2) create the tracking table and mark the baseline as already applied:
+wrangler d1 execute swapmyshow-db --remote --command "CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL); INSERT OR IGNORE INTO d1_migrations (name) VALUES ('0001_init.sql');"
+
+# 3) from now on, this is a no-op until there are new migrations:
+npm run migrate
+```
+
+A brand-new database needs none of this — `npm run migrate` builds it from
+`0001_init.sql`.
 
 ## Local development
 
-1. Install dependencies:
+1. Install dependencies and set up the local db:
    ```sh
    cd backend
    npm install
+   npm run migrate:local     # build the local db from migrations
+   npm run seed:local        # optional demo data
    ```
 2. Start Wrangler in local mode:
    ```sh
