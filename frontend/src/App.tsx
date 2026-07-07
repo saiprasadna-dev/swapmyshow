@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { listings, myListings } from "./data";
 import { fetchMe, signOut, type AuthUser } from "./authClient";
 import SignUp from "./screens/SignUp";
 import Home from "./screens/Home";
@@ -17,13 +16,10 @@ export type Screen =
   | { name: "search" }
   | { name: "post" }
   | { name: "profile" }
-  | { name: "listing"; id: string }
-  | { name: "chat"; id: string }
-  | { name: "confirmed"; id: string }
-  | { name: "rate"; id: string };
-
-const all = [...listings, ...myListings];
-const byId = (id: string) => all.find((l) => l.id === id) ?? listings[0];
+  | { name: "listing"; id: number }
+  | { name: "chat"; swapId: number }
+  | { name: "confirmed"; swapId: number }
+  | { name: "rate"; swapId: number };
 
 function App() {
   const [screen, setScreen] = useState<Screen>({ name: "signup" });
@@ -67,14 +63,14 @@ function App() {
       {screen.name === "profile" && (
         <Profile go={go} user={user} onSignOut={handleSignOut} />
       )}
-      {screen.name === "listing" && (
-        <ListingDetail listing={byId(screen.id)} go={go} />
+      {screen.name === "listing" && <ListingDetail id={screen.id} go={go} />}
+      {screen.name === "chat" && (
+        <Chat swapId={screen.swapId} user={user} go={go} />
       )}
-      {screen.name === "chat" && <Chat listing={byId(screen.id)} go={go} />}
       {screen.name === "confirmed" && (
-        <Confirmed listing={byId(screen.id)} go={go} />
+        <Confirmed swapId={screen.swapId} go={go} />
       )}
-      {screen.name === "rate" && <Rate listing={byId(screen.id)} go={go} />}
+      {screen.name === "rate" && <Rate swapId={screen.swapId} go={go} />}
     </div>
   );
 }

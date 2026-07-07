@@ -1,18 +1,70 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Listing } from "../data";
 import { inr, savePct } from "../data";
+import { fetchListing, startSwap, toggleSaved } from "../apiClient";
 import { SellerCard, Verified } from "../components";
 import type { Screen } from "../App";
 
 export default function ListingDetail({
-  listing,
+  id,
   go,
 }: {
-  listing: Listing;
+  id: number;
   go: (s: Screen) => void;
 }) {
+  const [l, setL] = useState<Listing | null>(null);
   const [saved, setSaved] = useState(false);
-  const l = listing;
+  const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchListing(id)
+      .then((listing) => active && setL(listing))
+      .catch(() => active && setL(null));
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const openChat = async () => {
+    if (!l || starting) return;
+    setStarting(true);
+    try {
+      const swap = await startSwap(l.id);
+      go({ name: "chat", swapId: swap.id });
+    } catch {
+      setStarting(false);
+    }
+  };
+
+  const save = async () => {
+    if (!l) return;
+    const next = !saved;
+    setSaved(next);
+    try {
+      const result = await toggleSaved(l.id);
+      setSaved(result);
+    } catch {
+      setSaved(!next); // revert on failure
+    }
+  };
+
+  if (!l) {
+    return (
+      <div className="screen no-nav">
+        <header className="top">
+          <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "home" })}>
+            ←
+          </button>
+          <h3>Listing</h3>
+          <span style={{ width: 40 }} />
+        </header>
+        <p className="small muted" style={{ textAlign: "center", marginTop: 40 }}>
+          Loading…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="screen no-nav">
@@ -71,15 +123,12 @@ export default function ListingDetail({
       </div>
 
       <div style={{ marginTop: "auto", paddingTop: 16 }} className="stack">
-        <button
-          className="btn btn-primary"
-          onClick={() => go({ name: "chat", id: l.id })}
-        >
-          💬 Chat to confirm
+        <button className="btn btn-primary" onClick={openChat} disabled={starting}>
+          💬 {starting ? "Opening chat…" : "Chat to confirm"}
         </button>
         <button
           className="btn btn-outline"
-          onClick={() => setSaved(!saved)}
+          onClick={save}
           aria-pressed={saved}
         >
           {saved ? "♥ Saved" : "♡ Save"}

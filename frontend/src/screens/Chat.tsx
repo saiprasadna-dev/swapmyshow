@@ -1,30 +1,107 @@
-import { useState } from "react";
-import type { Listing } from "../data";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { inr } from "../data";
+import {
+  fetchSwap,
+  fetchMessages,
+  sendMessage,
+  advanceSwap,
+  type SwapView,
+  type ChatMessage,
+} from "../apiClient";
+import type { AuthUser } from "../authClient";
 import { SwapTracker, Verified } from "../components";
 import type { Screen } from "../App";
 
+// DB step → 3-step tracker position.
+const trackerStep = (step: SwapView["step"]): 1 | 2 | 3 =>
+  step === "agree" ? 1 : step === "transfer" ? 2 : 3;
+
 export default function Chat({
-  listing,
+  swapId,
+  user,
   go,
 }: {
-  listing: Listing;
+  swapId: number;
+  user: AuthUser | null;
   go: (s: Screen) => void;
 }) {
-  // tracker: step 1 = agree on price/seats, step 2 = transfer + confirm receipt
-  const [confirmed, setConfirmed] = useState(false);
+  const [swap, setSwap] = useState<SwapView | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
-  const [extra, setExtra] = useState<string[]>([]);
+  const lastId = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const l = listing;
-  const first = l.seller.name.split(" ")[0];
-  const total = l.price;
+  // Merge in only messages we haven't seen, keeping chronological order.
+  const merge = useCallback((incoming: ChatMessage[]) => {
+    if (incoming.length === 0) return;
+    setMessages((prev) => {
+      const seen = new Set(prev.map((m) => m.id));
+      const next = [...prev, ...incoming.filter((m) => !seen.has(m.id))];
+      lastId.current = next.reduce((max, m) => Math.max(max, m.id), lastId.current);
+      return next;
+    });
+  }, []);
 
-  const send = () => {
-    if (!draft.trim()) return;
-    setExtra((xs) => [...xs, draft.trim()]);
+  // Load the swap once, then poll for new messages.
+  useEffect(() => {
+    let active = true;
+    fetchSwap(swapId).then((s) => active && setSwap(s)).catch(() => {});
+    fetchMessages(swapId).then((m) => active && merge(m)).catch(() => {});
+
+    const timer = setInterval(() => {
+      fetchMessages(swapId, lastId.current)
+        .then((m) => active && merge(m))
+        .catch(() => {});
+    }, 3000);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [swapId, merge]);
+
+  // Keep the newest message in view.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages, swap]);
+
+  const send = async (text: string) => {
+    const body = text.trim();
+    if (!body) return;
     setDraft("");
+    try {
+      const msg = await sendMessage(swapId, body);
+      merge([msg]);
+    } catch {
+      /* keep the draft cleared; poll will reconcile */
+    }
   };
+
+  const advance = async (action: "confirm" | "receipt") => {
+    try {
+      const updated = await advanceSwap(swapId, action);
+      setSwap(updated);
+      if (action === "receipt") go({ name: "confirmed", swapId });
+    } catch {
+      /* ignore; UI stays on current step */
+    }
+  };
+
+  if (!swap) {
+    return (
+      <div className="screen no-nav">
+        <p className="small muted" style={{ textAlign: "center", marginTop: 40 }}>
+          Loading chat…
+        </p>
+      </div>
+    );
+  }
+
+  const l = swap.listing;
+  const other = swap.listing.seller;
+  const first = other.name.split(" ")[0];
+  const total = swap.agreedPrice;
+  const confirmed = swap.step !== "agree";
 
   return (
     <div className="screen no-nav">
@@ -34,8 +111,8 @@ export default function Chat({
         </button>
         <div style={{ flex: 1 }}>
           <div className="row" style={{ gap: 6 }}>
-            <h3>{l.seller.name}</h3>
-            <Verified />
+            <h3>{other.name}</h3>
+            {other.verified && <Verified />}
           </div>
           <div className="small muted">
             {l.title} · {l.when}
@@ -43,17 +120,14 @@ export default function Chat({
         </div>
       </header>
 
-      <SwapTracker step={confirmed ? 2 : 1} />
+      <SwapTracker step={trackerStep(swap.step)} />
 
-      <div className="chat-scroll">
-        <div className="bubble me">Hey! Are the seats still available?</div>
-        <div className="bubble them">
-          Yes! <span className="seat-code">{l.seats.join("–")}</span>. Can send
-          now <span aria-hidden>🙂</span>
-        </div>
-        <div className="bubble me">
-          Perfect. {inr(total)} for {l.seats.length > 1 ? "both" : "it"}?
-        </div>
+      <div className="chat-scroll" ref={scrollRef}>
+        {messages.map((m) => (
+          <div key={m.id} className={`bubble ${m.senderId === user?.id ? "me" : "them"}`}>
+            {m.body}
+          </div>
+        ))}
 
         {/* confirm details card */}
         <div className="ticket" style={{ alignSelf: "stretch" }}>
@@ -68,7 +142,7 @@ export default function Chat({
             <span className="price">{inr(total)}</span>
           </div>
           {!confirmed ? (
-            <button className="btn btn-primary" onClick={() => setConfirmed(true)}>
+            <button className="btn btn-primary" onClick={() => advance("confirm")}>
               ✓ Confirm swap
             </button>
           ) : (
@@ -79,45 +153,34 @@ export default function Chat({
         </div>
 
         {confirmed && (
-          <>
-            <div className="bubble them">
-              Sent the tickets to your number <span aria-hidden>🎉</span>
+          <div className="ticket" style={{ alignSelf: "stretch" }}>
+            <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
+              STEP 2 · CONFIRM RECEIPT
             </div>
-            <div className="ticket" style={{ alignSelf: "stretch" }}>
-              <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
-                STEP 2 · CONFIRM RECEIPT
-              </div>
-              <p className="small" style={{ margin: "4px 0 10px" }}>
-                Got the e-ticket from {first}?
-              </p>
-              <div className="row" style={{ gap: 8 }}>
-                <button
-                  className="btn btn-primary btn-small"
-                  style={{ flex: 1 }}
-                  onClick={() => go({ name: "confirmed", id: l.id })}
-                >
-                  ✓ Yes, got it
-                </button>
-                <button className="btn btn-ghost btn-small" style={{ flex: 1 }}>
-                  Not yet
-                </button>
-              </div>
+            <p className="small" style={{ margin: "4px 0 10px" }}>
+              Got the e-ticket from {first}?
+            </p>
+            <div className="row" style={{ gap: 8 }}>
+              <button
+                className="btn btn-primary btn-small"
+                style={{ flex: 1 }}
+                onClick={() => advance("receipt")}
+              >
+                ✓ Yes, got it
+              </button>
+              <button className="btn btn-ghost btn-small" style={{ flex: 1 }}>
+                Not yet
+              </button>
             </div>
-          </>
-        )}
-
-        {extra.map((m, i) => (
-          <div key={i} className="bubble me">
-            {m}
           </div>
-        ))}
+        )}
 
         {!confirmed && (
           <div className="row" style={{ gap: 8 }}>
-            <button className="chip" onClick={() => setExtra((xs) => [...xs, "Still available?"])}>
+            <button className="chip" onClick={() => send("Still available?")}>
               Still available?
             </button>
-            <button className="chip" onClick={() => setExtra((xs) => [...xs, "Can you send proof?"])}>
+            <button className="chip" onClick={() => send("Can you send proof?")}>
               Send proof
             </button>
           </div>
@@ -134,7 +197,7 @@ export default function Chat({
           placeholder="Message…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
+          onKeyDown={(e) => e.key === "Enter" && send(draft)}
           aria-label="Message"
           style={{ borderRadius: 999, flex: 1 }}
         />
@@ -142,7 +205,7 @@ export default function Chat({
           className="icon-btn"
           style={{ background: "var(--purple)", color: "#fff", border: "none" }}
           aria-label="Send message"
-          onClick={send}
+          onClick={() => send(draft)}
         >
           ➤
         </button>

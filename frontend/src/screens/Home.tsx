@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { listings, type Category } from "../data";
+import { useEffect, useState } from "react";
+import { type Category, type Listing } from "../data";
+import { fetchListings, ApiError } from "../apiClient";
 import { BottomNav, TicketCard } from "../components";
 import type { Screen } from "../App";
 
@@ -13,12 +14,25 @@ const timeTabs = [
 export default function Home({ go }: { go: (s: Screen) => void }) {
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
   const [when, setWhen] = useState<(typeof timeTabs)[number]["id"]>("tonight");
+  const [all, setAll] = useState<Listing[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const feed = listings.filter(
-    (l) =>
-      l.timeBucket === when && (cat === "All" || l.category === cat)
+  useEffect(() => {
+    let active = true;
+    fetchListings()
+      .then((ls) => active && setAll(ls))
+      .catch((e) =>
+        active && setError(e instanceof ApiError ? e.code : "load_failed")
+      );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const feed = all.filter(
+    (l) => l.timeBucket === when && (cat === "All" || l.category === cat)
   );
-  const soon = listings.filter((l) => l.timeBucket === "tonight").length;
+  const soon = all.filter((l) => l.timeBucket === "tonight").length;
 
   return (
     <div className="screen">
@@ -48,7 +62,7 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
         ))}
       </div>
 
-      {when === "tonight" && (
+      {when === "tonight" && soon > 0 && (
         <button
           className="banner-urgent"
           style={{ margin: "12px 0 0" }}
@@ -81,7 +95,11 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
         ))}
         {feed.length === 0 && (
           <div className="ticket" style={{ textAlign: "center", padding: 26 }}>
-            <strong>No {cat.toLowerCase()} swaps {when} yet.</strong>
+            <strong>
+              {error
+                ? "Couldn't load listings."
+                : `No ${cat.toLowerCase()} swaps ${when} yet.`}
+            </strong>
             <p className="small muted" style={{ margin: "6px 0 12px" }}>
               Have a ticket you can't use? List it in under a minute.
             </p>

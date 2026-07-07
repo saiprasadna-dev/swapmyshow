@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { me, myListings, listings } from "../data";
+import { useEffect, useState } from "react";
+import type { Listing } from "../data";
+import {
+  fetchMyListings,
+  fetchSavedListings,
+  fetchMySwaps,
+  type SwapView,
+} from "../apiClient";
 import { BottomNav, TicketCard, Verified } from "../components";
 import type { Screen } from "../App";
 import type { AuthUser } from "../authClient";
@@ -16,16 +22,26 @@ export default function Profile({
   onSignOut?: () => void;
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Selling");
+  const [selling, setSelling] = useState<Listing[]>([]);
+  const [saved, setSaved] = useState<Listing[]>([]);
+  const [bought, setBought] = useState<SwapView[]>([]);
 
-  const name = user?.name ?? me.name;
-  const rating = user?.rating ?? me.rating;
-  const swaps = user?.swaps ?? me.swaps;
+  useEffect(() => {
+    let active = true;
+    fetchMyListings().then((l) => active && setSelling(l)).catch(() => {});
+    fetchSavedListings().then((l) => active && setSaved(l)).catch(() => {});
+    fetchMySwaps().then((s) => active && setBought(s)).catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  // Highest-trust badge the account has earned. Google sign-in sets ID; an
-  // email OTP proves the address; demo (no session) keeps the sample badge.
-  const trustBadge = !user ? (
-    <Verified />
-  ) : user.idVerified ? (
+  const name = user?.name ?? "You";
+  const rating = user?.rating ?? 0;
+  const swaps = user?.swaps ?? 0;
+
+  // Highest-trust badge the account has earned.
+  const trustBadge = !user ? null : user.idVerified ? (
     <Verified label="ID verified" />
   ) : user.emailVerified ? (
     <Verified label="Email verified" />
@@ -33,12 +49,8 @@ export default function Profile({
     <Verified label="Phone verified" />
   ) : null;
 
-  const items =
-    tab === "Selling"
-      ? myListings
-      : tab === "Bought"
-      ? [listings[0]]
-      : [listings[4]];
+  // The most recent completed swap the user can rate, if any.
+  const recentSwap = bought.find((s) => s.step === "done") ?? bought[0];
 
   return (
     <div className="screen">
@@ -86,34 +98,60 @@ export default function Profile({
       </div>
 
       <div className="stack">
-        {items.map((l) => (
-          <TicketCard
-            key={l.id}
-            listing={l}
-            onOpen={
-              l.status === "sold" ? undefined : () => go({ name: "listing", id: l.id })
-            }
-          />
-        ))}
+        {tab === "Selling" &&
+          selling.map((l) => (
+            <TicketCard
+              key={l.id}
+              listing={l}
+              onOpen={
+                l.status === "sold" ? undefined : () => go({ name: "listing", id: l.id })
+              }
+            />
+          ))}
+        {tab === "Bought" &&
+          bought.map((s) => (
+            <TicketCard
+              key={s.id}
+              listing={s.listing}
+              onOpen={() => go({ name: "chat", swapId: s.id })}
+            />
+          ))}
+        {tab === "Saved" &&
+          saved.map((l) => (
+            <TicketCard
+              key={l.id}
+              listing={l}
+              onOpen={() => go({ name: "listing", id: l.id })}
+            />
+          ))}
+        {((tab === "Selling" && selling.length === 0) ||
+          (tab === "Bought" && bought.length === 0) ||
+          (tab === "Saved" && saved.length === 0)) && (
+          <p className="small muted" style={{ textAlign: "center", padding: 20 }}>
+            Nothing here yet.
+          </p>
+        )}
       </div>
 
-      <button
-        className="ticket row"
-        style={{
-          marginTop: 12,
-          background: "var(--purple-soft)",
-          borderColor: "var(--purple-border)",
-        }}
-        onClick={() => go({ name: "rate", id: "dune" })}
-      >
-        <span aria-hidden>⭐</span>
-        <span style={{ fontWeight: 600, fontSize: 14 }}>
-          Rate your recent swaps
-        </span>
-        <span style={{ marginLeft: "auto" }} aria-hidden>
-          →
-        </span>
-      </button>
+      {recentSwap && (
+        <button
+          className="ticket row"
+          style={{
+            marginTop: 12,
+            background: "var(--purple-soft)",
+            borderColor: "var(--purple-border)",
+          }}
+          onClick={() => go({ name: "rate", swapId: recentSwap.id })}
+        >
+          <span aria-hidden>⭐</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>
+            Rate your recent swaps
+          </span>
+          <span style={{ marginLeft: "auto" }} aria-hidden>
+            →
+          </span>
+        </button>
+      )}
 
       {user && onSignOut && (
         <button

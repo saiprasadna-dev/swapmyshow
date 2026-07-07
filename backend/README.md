@@ -28,6 +28,34 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
 - `POST /auth/otp/verify` - exchange `{ email, code }` for a session
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
 
+### Listings
+
+- `GET /listings?category=` - public browse feed of active listings (with seller)
+- `GET /listings/:id` - public listing detail
+- `POST /listings` *(auth)* - create a listing owned by the caller
+- `POST /listings/:id/save` *(auth)* - toggle the listing in the caller's saved set
+- `GET /me/listings` *(auth)* - the caller's own listings (Profile → Selling)
+- `GET /me/saved` *(auth)* - the caller's saved listings (Profile → Saved)
+
+### Swaps & chat
+
+- `POST /listings/:id/swap` *(auth)* - start or resume the caller's swap for a listing
+- `GET /swaps/:id` *(auth)* - swap state + joined listing (drives the tracker)
+- `GET /swaps/:id/messages?sinceId=` *(auth)* - poll chat history (incremental)
+- `POST /swaps/:id/messages` *(auth)* - send a chat message
+- `POST /swaps/:id/confirm` *(auth)* - advance `agree → transfer`
+- `POST /swaps/:id/transfer` *(auth)* - seller marks the ticket transferred
+- `POST /swaps/:id/receipt` *(auth)* - buyer confirms receipt; finalizes the swap
+- `POST /swaps/:id/rate` *(auth)* - rate the counterparty once
+- `GET /me/swaps` *(auth)* - swaps the caller has bought into (Profile → Bought)
+
+When both `transfer` and `receipt` are recorded the swap is marked `done`, the
+listing flips to `sold`, and both users' `swap_count` is incremented (one atomic
+batch). Ratings recompute the ratee's average `users.rating`.
+
+The database ships seed content in `src/database/migrations/0003_seed.sql` (a few
+demo sellers + active listings) so a fresh install isn't empty.
+
 ## Google Sign-In
 
 The frontend obtains a Google ID token (via Google Identity Services) and POSTs

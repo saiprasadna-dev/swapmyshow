@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Category } from "../data";
+import { createListing, ApiError } from "../apiClient";
 import { BottomNav } from "../components";
 import type { Screen } from "../App";
 
@@ -13,9 +14,44 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
   const [paid, setPaid] = useState("");
   const [ask, setAsk] = useState("");
   const [uploaded, setUploaded] = useState(false);
-  const [posted, setPosted] = useState(false);
+  const [posted, setPosted] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const ready = event && ask;
+
+  // Turn the free-text date field into an ISO datetime. Falls back to a
+  // near-future time so a quick "Tonight 9:30" still lands as a valid event.
+  const toEventAt = (raw: string): string => {
+    const parsed = raw ? Date.parse(raw) : NaN;
+    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
+    const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    return soon.toISOString();
+  };
+
+  const post = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    setError(null);
+    const seatList = seats.split(/[,\s–-]+/).map((s) => s.trim()).filter(Boolean);
+    try {
+      const listing = await createListing({
+        category: cat,
+        title: event.trim(),
+        venue: "",
+        eventAt: toEventAt(date),
+        seats: seatList,
+        ticketCount: Math.max(1, seatList.length),
+        paid: Number(paid.replace(/[^\d]/g, "")) || Number(ask.replace(/[^\d]/g, "")),
+        ask: Number(ask.replace(/[^\d]/g, "")),
+        hasScreenshot: uploaded,
+      });
+      setPosted(listing.id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.code : "post_failed");
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="screen">
@@ -102,22 +138,36 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
       </div>
 
       <div style={{ marginTop: "auto", paddingTop: 18 }}>
-        {posted ? (
+        {posted !== null ? (
           <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "rgba(14,159,110,.3)" }}>
             <strong style={{ color: "var(--trust)" }}>✓ Listing posted</strong>
-            <p className="small muted" style={{ margin: "4px 0 0" }}>
+            <p className="small muted" style={{ margin: "4px 0 10px" }}>
               Buyers nearby can now chat with you.
             </p>
+            <button
+              className="btn btn-outline btn-small"
+              style={{ margin: "0 auto" }}
+              onClick={() => go({ name: "listing", id: posted })}
+            >
+              View listing
+            </button>
           </div>
         ) : (
-          <button
-            className="btn btn-primary"
-            disabled={!ready}
-            style={!ready ? { opacity: 0.5 } : undefined}
-            onClick={() => setPosted(true)}
-          >
-            Post listing
-          </button>
+          <>
+            {error && (
+              <p className="small" style={{ color: "var(--danger, #c0392b)", textAlign: "center", marginBottom: 8 }}>
+                Couldn't post — check the details and try again.
+              </p>
+            )}
+            <button
+              className="btn btn-primary"
+              disabled={!ready || busy}
+              style={!ready || busy ? { opacity: 0.5 } : undefined}
+              onClick={post}
+            >
+              {busy ? "Posting…" : "Post listing"}
+            </button>
+          </>
         )}
       </div>
 

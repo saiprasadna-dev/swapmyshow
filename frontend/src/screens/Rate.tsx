@@ -1,18 +1,50 @@
-import { useState } from "react";
-import type { Listing } from "../data";
+import { useEffect, useState } from "react";
+import { fetchSwap, submitRating, ApiError, type SwapView } from "../apiClient";
 import type { Screen } from "../App";
 
 export default function Rate({
-  listing,
+  swapId,
   go,
 }: {
-  listing: Listing;
+  swapId: number;
   go: (s: Screen) => void;
 }) {
+  const [swap, setSwap] = useState<SwapView | null>(null);
   const [stars, setStars] = useState(5);
   const [note, setNote] = useState("");
   const [done, setDone] = useState(false);
-  const s = listing.seller;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchSwap(swapId)
+      .then((s) => active && setSwap(s))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [swapId]);
+
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await submitRating(swapId, stars, note.trim());
+      setDone(true);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "already_rated") {
+        setDone(true); // already rated counts as done
+      } else {
+        setError(e instanceof ApiError ? e.code : "rate_failed");
+        setBusy(false);
+      }
+    }
+  };
+
+  // Fall back to a neutral placeholder until the swap loads.
+  const s = swap?.listing.seller ?? { name: "Seller", swaps: 0 };
 
   return (
     <div className="screen no-nav">
@@ -86,9 +118,16 @@ export default function Rate({
             </button>
           </div>
         ) : (
-          <button className="btn btn-primary" onClick={() => setDone(true)}>
-            Submit rating
-          </button>
+          <>
+            {error && (
+              <p className="small" style={{ color: "var(--danger, #c0392b)", textAlign: "center", marginBottom: 8 }}>
+                Couldn't submit — try again.
+              </p>
+            )}
+            <button className="btn btn-primary" onClick={submit} disabled={busy}>
+              {busy ? "Submitting…" : "Submit rating"}
+            </button>
+          </>
         )}
       </div>
     </div>

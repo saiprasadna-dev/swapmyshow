@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { listings, type Category } from "../data";
+import { useEffect, useMemo, useState } from "react";
+import { type Category, type Listing } from "../data";
+import { fetchListings } from "../apiClient";
 import { BottomNav, TicketCard } from "../components";
 import type { Screen } from "../App";
 
@@ -13,18 +14,30 @@ export default function Search({ go }: { go: (s: Screen) => void }) {
   const [maxPrice, setMaxPrice] = useState(1500);
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [showResults, setShowResults] = useState(false);
+  const [all, setAll] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    fetchListings()
+      .then((ls) => active && setAll(ls))
+      .catch(() => active && setAll([]));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const results = useMemo(
     () =>
-      listings.filter((l) => {
+      all.filter((l) => {
         if (q && !l.title.toLowerCase().includes(q.toLowerCase())) return false;
         if (cat && l.category !== cat) return false;
         if (when === "Tonight" && l.timeBucket !== "tonight") return false;
+        if (when === "This week" && l.timeBucket === "weekend") return false;
         if (l.price > maxPrice) return false;
         if (verifiedOnly && !l.seller.verified) return false;
         return true;
       }),
-    [q, cat, when, maxPrice, verifiedOnly]
+    [all, q, cat, when, maxPrice, verifiedOnly]
   );
 
   return (
