@@ -8,6 +8,10 @@ const app = new Hono<AppEnv>()
 // Exchange a Google ID token for a SwapMyShow session token.
 app.post('/google', authController.google)
 
+// Passwordless email sign-in: request a code, then verify it for a session.
+app.post('/otp/request', authController.requestOtp)
+app.post('/otp/verify', authController.verifyOtp)
+
 // Return the currently authenticated user.
 app.get('/me', requireAuth, authController.me)
 

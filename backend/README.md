@@ -24,6 +24,8 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
 - `GET /` - health check endpoint returns API running message
 - `GET /health` - service health response
 - `POST /auth/google` - verify a Google ID token and return a session
+- `POST /auth/otp/request` - email a one-time sign-in code to `{ email }`
+- `POST /auth/otp/verify` - exchange `{ email, code }` for a session
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
 
 ## Google Sign-In
@@ -42,6 +44,34 @@ it here. The backend:
 Nothing about the user is trusted from the browser — the session is derived
 only from the verified Google claims.
 
+## Email OTP Sign-In (passwordless)
+
+For people who don't want to use Google, we email a short one-time code. The
+same two calls both sign up and sign in — a first-time email creates the
+account, a returning email logs in.
+
+1. `POST /auth/otp/request` with `{ "email": "you@example.com" }`. The backend
+   generates a 6-digit code, stores only its **SHA-256 hash** in
+   `otp_codes` (never the code itself), and emails the code via Brevo. A resend
+   cooldown (60s) and a per-code attempt cap (5) limit brute force. Always
+   returns `200` — it never reveals whether the address already has an account.
+2. `POST /auth/otp/verify` with `{ "email", "code" }`. On a match the code is
+   consumed (single-use), the user is upserted with `email_verified = 1`, and a
+   signed **session token** (the same HS256 token Google sign-in issues) is
+   returned. Codes expire after `OTP_TTL_MINUTES` (default 10).
+
+An email OTP proves the address, so it sets `email_verified` — but **not**
+`id_verified`, which is reserved for stronger identity checks.
+
+When Brevo isn't configured the mailer logs the code to the worker console
+instead of sending, and (in `ENVIRONMENT=development` only) the request
+response includes a `debugCode` so the flow is testable without a mailbox.
+
+> **Note on "Gmail SMTP":** Cloudflare Workers can't open raw SMTP
+> connections, so codes are delivered through Brevo's HTTP API rather than
+> Gmail's SMTP server. Set `OTP_FROM_EMAIL` to a sender you've verified in
+> Brevo (this can be your Gmail address).
+
 ### Configuration
 
 | Variable            | Where          | Notes                                                   |
@@ -50,6 +80,10 @@ only from the verified Google claims.
 | `SESSION_SECRET`    | **secret**     | `wrangler secret put SESSION_SECRET` (≥ 32 chars, random). |
 | `SESSION_TTL_DAYS`  | `vars`         | Session lifetime, default `7`.                          |
 | `ALLOWED_ORIGINS`   | `vars`         | Comma-separated CORS allowlist, or `*`.                 |
+| `BREVO_API_KEY`     | **secret**     | `wrangler secret put BREVO_API_KEY` — Brevo HTTP API key for OTP emails. |
+| `OTP_FROM_EMAIL`    | `vars`         | Sender address verified in your Brevo account.          |
+| `OTP_FROM_NAME`     | `vars`         | Display name on OTP emails, default `SwapMyShow`.       |
+| `OTP_TTL_MINUTES`   | `vars`         | Code lifetime in minutes, default `10`.                 |
 
 Create the OAuth client at
 <https://console.cloud.google.com/apis/credentials> → **OAuth client ID →
@@ -59,14 +93,18 @@ fail closed with `503` rather than accepting unverifiable tokens.
 
 ### Database
 
-The `users` table needs `google_sub` and `picture` columns. For an existing
-database apply the migration; a fresh one from `schema.sql` already has them.
+A fresh database from `schema.sql` already has everything. For an existing
+database, apply the migrations in order — `0001` adds the Google columns and
+`0002` adds `users.email_verified` plus the `otp_codes` table.
 
 ```sh
-# existing db
+# existing db — apply migrations in order
 wrangler d1 execute swapmyshow-db --remote --file src/database/migrations/0001_google_auth.sql
+wrangler d1 execute swapmyshow-db --remote --file src/database/migrations/0002_email_otp.sql
 # generate a session secret
 openssl rand -base64 48 | wrangler secret put SESSION_SECRET
+# add the Brevo key for OTP email delivery
+wrangler secret put BREVO_API_KEY
 ```
 
 ## Local development

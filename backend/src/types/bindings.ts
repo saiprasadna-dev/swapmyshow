@@ -14,6 +14,16 @@ export type AppBindings = {
   /** Session lifetime in days (default 7). */
   SESSION_TTL_DAYS?: string
 
+  /** Brevo (Sendinblue) HTTP API key for sending OTP emails (secret). When
+      unset, OTP codes are logged to the console instead of emailed. */
+  BREVO_API_KEY?: string
+  /** Verified Brevo sender address OTP emails are sent "from". */
+  OTP_FROM_EMAIL?: string
+  /** Display name on OTP emails (default "SwapMyShow"). */
+  OTP_FROM_NAME?: string
+  /** OTP lifetime in minutes (default 10). */
+  OTP_TTL_MINUTES?: string
+
   /** D1 database binding. */
   DB: D1Database
 }
