@@ -55,7 +55,7 @@ function App() {
       {screen.name === "signup" && (
         <SignUp
           onDone={() => go({ name: "home" })}
-          onGoogle={(u) => {
+          onUser={(u) => {
             setUser(u);
             go({ name: "home" });
           }}

@@ -8,11 +8,24 @@ CREATE TABLE users (
     google_sub TEXT UNIQUE,                   -- Google account id (sign in with Google)
     picture TEXT,                             -- avatar URL from the identity provider
     id_verified INTEGER NOT NULL DEFAULT 0,   -- trust badges (screen 9)
+    email_verified INTEGER NOT NULL DEFAULT 0,-- email proven via Google or email OTP
     phone_verified INTEGER NOT NULL DEFAULT 0,
     rating REAL NOT NULL DEFAULT 0,           -- avg star rating
     swap_count INTEGER NOT NULL DEFAULT 0,    -- successful swaps
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- passwordless email sign-in: short-lived one-time codes ("magic code")
+-- Only a hash of the code is stored; rows are single-use and expire quickly.
+CREATE TABLE otp_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    code_hash TEXT NOT NULL,                  -- SHA-256 of "email:code"
+    attempts INTEGER NOT NULL DEFAULT 0,      -- wrong guesses so far
+    consumed INTEGER NOT NULL DEFAULT 0,      -- 1 once used/expired/superseded
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_otp_email ON otp_codes (email, created_at);
 
 -- screens 2/3/4/5: browse, search, listing detail, post a ticket
 CREATE TABLE listings (

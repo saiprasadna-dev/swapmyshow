@@ -200,6 +200,24 @@ h3 {
   padding: 9px 16px;
   font-size: 13.5px;
 }
+/* inline text button (e.g. "Change", "Resend code") */
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--purple);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.linklike:hover {
+  text-decoration: underline;
+}
+.linklike:disabled {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
 
 /* ------------------------- google sign-in -------------------- */
 .google-btn-wrap {

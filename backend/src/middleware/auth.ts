@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from 'hono'
 import type { AppEnv } from '../types/bindings'
-import { getAuthConfig, ConfigError } from '../config/env'
+import { getSessionConfig, ConfigError } from '../config/env'
 import { verifySession } from '../services/session'
 
 /** Requires a valid `Authorization: Bearer <session>` header. On success it
@@ -8,7 +8,7 @@ import { verifySession } from '../services/session'
 export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   let config
   try {
-    config = getAuthConfig(c.env)
+    config = getSessionConfig(c.env)
   } catch (err) {
     if (err instanceof ConfigError) {
       console.error('Auth misconfigured:', err.message)
