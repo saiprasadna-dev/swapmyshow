@@ -24,12 +24,22 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
 - `GET /` - health check endpoint returns API running message
 - `GET /health` - service health response
 - `POST /auth/google` - verify a Google ID token and return a session
-- `POST /auth/otp/request` - email a one-time code. `{ email }` (log in) or
-  `{ mode: "signup", name, email, phone }` (register — checks email/phone are free)
-- `POST /auth/otp/verify` - exchange the code for a session. Log in requires an
-  existing account (`no_account` otherwise); sign-up creates it from name/email/phone
+- `POST /auth/otp/request` - `{ mode: "signup", name, email, phone, password }` —
+  emails a sign-up code after checking the email/phone are free and the password is valid
+- `POST /auth/otp/verify` - `{ mode: "signup", name, email, phone, password, code }` —
+  verifies the emailed code and creates the account (password stored hashed)
+- `POST /auth/login` - `{ email, password }` — email + password sign-in (no OTP);
+  a wrong email/password returns a generic `invalid_credentials`
+- `POST /auth/password/forgot` - `{ email }` — email a reset code. Always returns
+  `ok` for a valid email (never reveals whether an account exists)
+- `POST /auth/password/reset` - `{ email, code, password }` — verify the code and
+  set a new password; signs the user in on success
 - `POST /auth/phone` *(auth)* - attach a phone to the signed-in account (one-time)
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
+
+Sign-up verifies the email with a one-time code; after that, every sign-in uses the
+password. Passwords are stored only as a salted PBKDF2 hash (see
+`services/password.ts`). Google sign-in is unchanged and has no password.
 
 ### Listings
 

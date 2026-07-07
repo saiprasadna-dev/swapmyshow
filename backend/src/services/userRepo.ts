@@ -7,6 +7,7 @@ export type UserRow = {
   phone: string | null
   picture: string | null
   google_sub: string | null
+  password_hash: string | null
   id_verified: number
   email_verified: number
   phone_verified: number
@@ -75,24 +76,37 @@ export async function getUserByPhone(
 }
 
 /**
- * Create a user from the sign-up form (name + email + phone), with the email
- * proven via OTP (email_verified = 1). Phone is stored but not verified — no
- * OTP is sent to it. Callers must have already checked email/phone uniqueness.
+ * Create a user from the sign-up form (name + email + phone + password), with
+ * the email proven via OTP (email_verified = 1). The password is stored only as
+ * a hash; the phone is stored but not verified. Callers must have already
+ * checked email/phone uniqueness.
  */
 export async function createProfileUser(
   db: D1Database,
-  input: { name: string; email: string; phone: string }
+  input: { name: string; email: string; phone: string; passwordHash: string }
 ): Promise<UserRow> {
   const inserted = await db
     .prepare(
-      `INSERT INTO users (name, email, phone, email_verified)
-       VALUES (?1, ?2, ?3, 1)
+      `INSERT INTO users (name, email, phone, password_hash, email_verified)
+       VALUES (?1, ?2, ?3, ?4, 1)
        RETURNING *`
     )
-    .bind(input.name, input.email, input.phone)
+    .bind(input.name, input.email, input.phone, input.passwordHash)
     .first<UserRow>()
   if (!inserted) throw new Error('failed to create user')
   return inserted
+}
+
+/** Set (or replace) an account's password hash — used by password reset. */
+export async function setUserPassword(
+  db: D1Database,
+  id: number,
+  passwordHash: string
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`UPDATE users SET password_hash = ?1 WHERE id = ?2 RETURNING *`)
+    .bind(passwordHash, id)
+    .first<UserRow>()
 }
 
 /** Mark an existing account's email as verified (a returning OTP log-in). */
