@@ -84,47 +84,24 @@ textarea {
   position: relative;
 }
 
-/* Tablets & laptops: instead of a bare 430px column on a blank page,
-   render the app as a centred device frame on a branded backdrop.
-   The frame has a fixed height and each screen scrolls inside it,
-   so the UI fits any viewport without ever showing the raw column.
-   Gated on a fine, hovering pointer so a phone with "Desktop site"
-   toggled on (which reports a wide viewport) still gets the real
-   full-screen mobile layout instead of a floating card. */
-@media (min-width: 600px) and (hover: hover) and (pointer: fine) {
-  body {
-    min-height: 100svh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 28px 20px;
-    background: radial-gradient(
-        115% 85% at 100% 0%,
-        rgba(108, 61, 244, 0.18),
-        transparent 58%
-      ),
-      radial-gradient(
-        115% 90% at 0% 100%,
-        rgba(14, 159, 110, 0.13),
-        transparent 55%
-      ),
-      #eae6f5;
+/* --- desktop / wide layout: nav moves to a fixed left sidebar --- */
+:root {
+  --sidebar-w: 240px;
+  --content-max: 780px;
+}
+@media (min-width: 760px) {
+  /* centre the content column beside the sidebar, capped for reading */
+  .screen:has(.bottom-nav) {
+    max-width: var(--content-max);
+    margin-left: max(var(--sidebar-w), calc((100% - var(--content-max)) / 2));
+    margin-right: auto;
+    padding: 32px 28px 48px;
   }
-  .phone {
-    width: 430px;
-    max-width: 430px;
-    height: min(880px, calc(100svh - 56px));
-    min-height: 0;
-    border: 1px solid var(--line);
-    border-radius: 30px;
-    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
-      0 44px 90px -44px rgba(23, 18, 37, 0.55);
-    overflow: hidden;
-  }
-  /* each screen becomes the scroll region within the frame */
-  .screen {
-    overflow-y: auto;
-    scrollbar-width: thin;
+  /* screens without a nav (signup, chat, listing…) just centre */
+  .screen:not(:has(.bottom-nav)) {
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding: 32px 28px 48px;
   }
 }
 .screen {
@@ -540,18 +517,79 @@ input[type="range"] {
 .bottom-nav .nav-post span:last-child {
   color: var(--purple);
 }
-/* inside the device frame, pin the nav to the frame's bottom edge
-   instead of the viewport so it tracks the app card, not the page */
-@media (min-width: 600px) and (hover: hover) and (pointer: fine) {
+/* on wide screens the bottom bar becomes a fixed left sidebar */
+@media (min-width: 760px) {
   .bottom-nav {
-    position: absolute;
+    position: fixed;
+    top: 0;
+    bottom: 0;
     left: 0;
-    right: 0;
-    width: 100%;
-    max-width: none;
+    right: auto;
     transform: none;
-    border-radius: 0 0 30px 30px;
-    padding-bottom: 12px;
+    width: var(--sidebar-w);
+    max-width: var(--sidebar-w);
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 6px;
+    background: var(--surface);
+    border-top: none;
+    border-right: 1px solid var(--line);
+    padding: 20px 14px;
+  }
+  /* brand wordmark at the top of the sidebar */
+  .bottom-nav::before {
+    content: "SwapMyShow";
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    padding: 6px 12px 18px;
+  }
+  .bottom-nav button {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 13px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .bottom-nav button:hover {
+    background: var(--bg);
+  }
+  .bottom-nav button.on {
+    background: var(--purple-soft);
+    color: var(--purple);
+  }
+  .bottom-nav .nav-icon {
+    font-size: 20px;
+    width: 24px;
+    text-align: center;
+  }
+  /* reset the floating "Sell" pill into a normal purple sidebar item */
+  .bottom-nav .nav-post {
+    background: var(--purple);
+    margin-top: 4px;
+  }
+  .bottom-nav .nav-post:hover {
+    background: var(--purple-deep);
+  }
+  .bottom-nav .nav-post .nav-icon {
+    width: 24px;
+    height: auto;
+    margin-top: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: #fff;
+    display: inline;
+    font-size: 20px;
+  }
+  .bottom-nav .nav-post span:last-child {
+    color: #fff;
   }
 }
 
