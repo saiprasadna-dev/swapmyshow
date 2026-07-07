@@ -2,11 +2,20 @@ import { useState } from "react";
 import { me, myListings, listings } from "../data";
 import { BottomNav, TicketCard, Verified } from "../components";
 import type { Screen } from "../App";
+import type { GoogleUser } from "../auth";
 
 const tabs = ["Selling", "Bought", "Saved"] as const;
 
-export default function Profile({ go }: { go: (s: Screen) => void }) {
+export default function Profile({
+  go,
+  user,
+}: {
+  go: (s: Screen) => void;
+  user?: GoogleUser | null;
+}) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Selling");
+
+  const name = user?.name ?? me.name;
 
   const items =
     tab === "Selling"
@@ -18,16 +27,32 @@ export default function Profile({ go }: { go: (s: Screen) => void }) {
   return (
     <div className="screen">
       <div style={{ textAlign: "center", marginTop: 8 }}>
-        <div className="avatar avatar-lg" style={{ margin: "0 auto 10px" }}>
-          {me.name[0]}
-        </div>
+        {user?.picture ? (
+          <img
+            className="avatar avatar-lg"
+            src={user.picture}
+            alt=""
+            referrerPolicy="no-referrer"
+            style={{ margin: "0 auto 10px", objectFit: "cover" }}
+          />
+        ) : (
+          <div className="avatar avatar-lg" style={{ margin: "0 auto 10px" }}>
+            {name[0]}
+          </div>
+        )}
         <div className="row" style={{ justifyContent: "center", gap: 6 }}>
-          <h2>{me.name}</h2>
+          <h2>{name}</h2>
           <Verified />
         </div>
-        <p className="small muted" style={{ margin: "4px 0 0" }}>
-          ★★★★★ {me.rating.toFixed(1)} · {me.swaps} swaps
-        </p>
+        {user?.email ? (
+          <p className="small muted" style={{ margin: "4px 0 0" }}>
+            {user.email}
+          </p>
+        ) : (
+          <p className="small muted" style={{ margin: "4px 0 0" }}>
+            ★★★★★ {me.rating.toFixed(1)} · {me.swaps} swaps
+          </p>
+        )}
       </div>
 
       <div className="tab-row" role="tablist" aria-label="My tickets">

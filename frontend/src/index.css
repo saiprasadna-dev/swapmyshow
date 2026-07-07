@@ -201,6 +201,34 @@ h3 {
   font-size: 13.5px;
 }
 
+/* ------------------------- google sign-in -------------------- */
+.google-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  justify-content: center;
+}
+.google-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  text-align: left;
+}
+.google-hint code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--purple);
+}
+
 /* ------------------------------- chips ----------------------- */
 .chip-row {
   display: flex;
