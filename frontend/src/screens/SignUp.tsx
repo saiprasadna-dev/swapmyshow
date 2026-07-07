@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Verified } from "../components";
+import { GoogleSignInButton, type GoogleUser } from "../auth";
 
-export default function SignUp({ onDone }: { onDone: () => void }) {
+export default function SignUp({
+  onDone,
+  onGoogle,
+}: {
+  onDone: () => void;
+  onGoogle: (user: GoogleUser) => void;
+}) {
   const [phone, setPhone] = useState("");
   return (
     <div className="screen no-nav" style={{ justifyContent: "center", gap: 18 }}>
@@ -37,14 +44,12 @@ export default function SignUp({ onDone }: { onDone: () => void }) {
         <button className="btn btn-primary" onClick={onDone}>
           Continue
         </button>
+
         <hr className="tear" />
-        <div className="row" style={{ gap: 10 }}>
-          <button className="btn btn-ghost" onClick={onDone}>
-            Google
-          </button>
-          <button className="btn btn-ghost" onClick={onDone}>
-            Apple
-          </button>
+
+        {/* real Google account picker → signs in with the chosen Gmail */}
+        <div className="row" style={{ justifyContent: "center" }}>
+          <GoogleSignInButton onUser={onGoogle} />
         </div>
       </div>
 
