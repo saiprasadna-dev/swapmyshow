@@ -12,6 +12,7 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string | null;
+  phone?: string | null;
   picture: string | null;
   idVerified?: boolean;
   emailVerified?: boolean;
@@ -128,6 +129,106 @@ export async function verifyOtp(email: string, code: string): Promise<AuthUser> 
     throw new OtpError(data.error ?? "verify_failed", res.status);
   }
   saveToken(data.token);
+  return data.user;
+}
+
+/* ---------------------------------------------------------------
+   Registration (one-time). Sign-up collects name + email + phone and
+   sends the code to the email only; the phone is stored, not verified.
+   The backend rejects an already-registered email or phone.
+---------------------------------------------------------------- */
+
+export interface SignupInput {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+/** Ask the backend to email a sign-up code, after checking the email and
+    phone aren't already registered. Returns a dev debugCode when no mailer. */
+export async function requestSignupOtp(
+  input: SignupInput
+): Promise<{ debugCode?: string }> {
+  if (!API_URL) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/otp/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...input, mode: "signup" }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    debugCode?: string;
+    error?: string;
+    retryAfterSeconds?: number;
+  };
+  if (!res.ok) {
+    throw new OtpError(
+      data.error ?? "request_failed",
+      res.status,
+      data.retryAfterSeconds
+    );
+  }
+  return { debugCode: data.debugCode };
+}
+
+/** Verify a sign-up code and create the account (name + email + phone). */
+export async function verifySignupOtp(
+  input: SignupInput,
+  code: string
+): Promise<AuthUser> {
+  if (!API_URL) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/otp/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...input, code, mode: "signup" }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    token?: string;
+    user?: AuthUser;
+    error?: string;
+  };
+  if (!res.ok || !data.token || !data.user) {
+    throw new OtpError(data.error ?? "verify_failed", res.status);
+  }
+  saveToken(data.token);
+  return data.user;
+}
+
+/** Attach a phone number to the signed-in account (one-time). Used after a
+    Google sign-up, which has no phone. */
+export async function setPhone(phone: string): Promise<AuthUser> {
+  const token = getToken();
+  if (!API_URL || !token) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/phone`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ phone }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    user?: AuthUser;
+    error?: string;
+  };
+  if (!res.ok || !data.user) {
+    throw new OtpError(data.error ?? "phone_failed", res.status);
+  }
   return data.user;
 }
 

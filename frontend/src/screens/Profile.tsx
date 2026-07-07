@@ -75,6 +75,7 @@ export default function Profile({
         {user?.email && (
           <p className="small muted" style={{ margin: "4px 0 0" }}>
             {user.email}
+            {user.phone ? ` · ${user.phone}` : ""}
           </p>
         )}
         <p className="small muted" style={{ margin: "2px 0 0" }}>
