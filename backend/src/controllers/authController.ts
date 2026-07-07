@@ -15,7 +15,6 @@ import {
   getUserByEmail,
   getUserByPhone,
   createProfileUser,
-  markEmailVerified,
   setUserPhone,
   toPublicUser,
 } from '../services/userRepo'
@@ -28,6 +27,7 @@ import {
   verifyOtp as checkOtp,
 } from '../services/otp'
 import { sendEmail, buildOtpEmail, MailError } from '../services/mailer'
+import { hashPassword, verifyPassword, isValidPassword } from '../services/password'
 
 export const authController = {
   /** POST /auth/google — exchange a Google ID token for a session. */
@@ -84,6 +84,7 @@ export const authController = {
       mode?: unknown
       name?: unknown
       phone?: unknown
+      password?: unknown
     } | null
     const rawEmail = typeof body?.email === 'string' ? body.email : ''
     const email = normalizeEmail(rawEmail)
@@ -94,8 +95,10 @@ export const authController = {
     if (body?.mode === 'signup') {
       const name = typeof body.name === 'string' ? body.name.trim() : ''
       const phone = normalizePhone(typeof body.phone === 'string' ? body.phone : '')
+      const password = typeof body.password === 'string' ? body.password : ''
       if (name.length < 2) return c.json({ error: 'invalid_name' }, 400)
       if (!isValidPhone(phone)) return c.json({ error: 'invalid_phone' }, 400)
+      if (!isValidPassword(password)) return c.json({ error: 'weak_password' }, 400)
       // Registration is one-time: reject an already-used email or phone up front
       // so the user is told to log in instead of being sent a pointless code.
       if (await getUserByEmail(c.env.DB, email)) {
@@ -162,6 +165,7 @@ export const authController = {
       mode?: unknown
       name?: unknown
       phone?: unknown
+      password?: unknown
     } | null
     const email = normalizeEmail(typeof body?.email === 'string' ? body.email : '')
     const code = typeof body?.code === 'string' ? body.code.trim() : ''
@@ -172,15 +176,21 @@ export const authController = {
       return c.json({ error: 'missing_code' }, 400)
     }
 
-    const isSignup = body?.mode === 'signup'
+    // The OTP verify endpoint now serves sign-up only — email is proven once
+    // here, then all later sign-ins use the password (POST /auth/login).
+    if (body?.mode !== 'signup') {
+      return c.json({ error: 'unsupported_mode' }, 400)
+    }
     // Validate the sign-up profile before burning the code.
-    let signupName = ''
-    let signupPhone = ''
-    if (isSignup) {
-      signupName = typeof body?.name === 'string' ? body.name.trim() : ''
-      signupPhone = normalizePhone(typeof body?.phone === 'string' ? body.phone : '')
-      if (signupName.length < 2) return c.json({ error: 'invalid_name' }, 400)
-      if (!isValidPhone(signupPhone)) return c.json({ error: 'invalid_phone' }, 400)
+    const signupName = typeof body?.name === 'string' ? body.name.trim() : ''
+    const signupPhone = normalizePhone(
+      typeof body?.phone === 'string' ? body.phone : ''
+    )
+    const signupPassword = typeof body?.password === 'string' ? body.password : ''
+    if (signupName.length < 2) return c.json({ error: 'invalid_name' }, 400)
+    if (!isValidPhone(signupPhone)) return c.json({ error: 'invalid_phone' }, 400)
+    if (!isValidPassword(signupPassword)) {
+      return c.json({ error: 'weak_password' }, 400)
     }
 
     const otpConfig = getOtpConfig(c.env)
@@ -189,28 +199,21 @@ export const authController = {
       return c.json({ error: result.reason }, 401)
     }
 
-    let user
-    if (isSignup) {
-      // Re-check uniqueness now that the code is verified (guards a race
-      // between requesting and verifying the code).
-      if (await getUserByEmail(c.env.DB, email)) {
-        return c.json({ error: 'email_taken' }, 409)
-      }
-      if (await getUserByPhone(c.env.DB, signupPhone)) {
-        return c.json({ error: 'phone_taken' }, 409)
-      }
-      user = await createProfileUser(c.env.DB, {
-        name: signupName,
-        email,
-        phone: signupPhone,
-      })
-    } else {
-      // Log in: the account must already exist — we never create one here, so
-      // an account is only ever made through sign-up (which collects a phone).
-      const existing = await getUserByEmail(c.env.DB, email)
-      if (!existing) return c.json({ error: 'no_account' }, 404)
-      user = (await markEmailVerified(c.env.DB, existing.id)) ?? existing
+    // Re-check uniqueness now that the code is verified (guards a race between
+    // requesting and verifying the code).
+    if (await getUserByEmail(c.env.DB, email)) {
+      return c.json({ error: 'email_taken' }, 409)
     }
+    if (await getUserByPhone(c.env.DB, signupPhone)) {
+      return c.json({ error: 'phone_taken' }, 409)
+    }
+    const passwordHash = await hashPassword(signupPassword)
+    const user = await createProfileUser(c.env.DB, {
+      name: signupName,
+      email,
+      phone: signupPhone,
+      passwordHash,
+    })
     const token = await issueSession(
       {
         id: user.id,
@@ -223,6 +226,52 @@ export const authController = {
       session.sessionTtlDays
     )
     return c.json({ token, user: toPublicUser(user) })
+  },
+
+  /** POST /auth/login — email + password sign-in (no OTP). Returns a session
+      on a correct password. Errors are deliberately generic
+      (`invalid_credentials`) so we don't reveal whether an email exists. */
+  login: async (c: Context<AppEnv>) => {
+    let session
+    try {
+      session = getSessionConfig(c.env)
+    } catch (err) {
+      if (err instanceof ConfigError) {
+        console.error('Auth misconfigured:', err.message)
+        return c.json({ error: 'auth_unavailable' }, 503)
+      }
+      throw err
+    }
+
+    const body = (await c.req.json().catch(() => null)) as {
+      email?: unknown
+      password?: unknown
+    } | null
+    const email = normalizeEmail(typeof body?.email === 'string' ? body.email : '')
+    const password = typeof body?.password === 'string' ? body.password : ''
+    if (!email || !isValidEmail(email) || !password) {
+      return c.json({ error: 'invalid_credentials' }, 401)
+    }
+
+    const existing = await getUserByEmail(c.env.DB, email)
+    // Verify even when there's no hash so timing doesn't leak account existence.
+    const ok = await verifyPassword(password, existing?.password_hash ?? null)
+    if (!existing || !ok) {
+      return c.json({ error: 'invalid_credentials' }, 401)
+    }
+
+    const token = await issueSession(
+      {
+        id: existing.id,
+        sub: `user:${existing.id}`,
+        email: existing.email ?? email,
+        name: existing.name,
+        picture: existing.picture ?? undefined,
+      },
+      session.sessionSecret,
+      session.sessionTtlDays
+    )
+    return c.json({ token, user: toPublicUser(existing) })
   },
 
   /** POST /auth/phone — attach a phone number to the signed-in account. Used

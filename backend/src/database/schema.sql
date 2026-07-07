@@ -6,6 +6,7 @@ CREATE TABLE users (
     email TEXT UNIQUE,
     phone TEXT UNIQUE,
     google_sub TEXT UNIQUE,                   -- Google account id (sign in with Google)
+    password_hash TEXT,                        -- PBKDF2 hash for email+password login (null for Google-only)
     picture TEXT,                             -- avatar URL from the identity provider
     id_verified INTEGER NOT NULL DEFAULT 0,   -- trust badges (screen 9)
     email_verified INTEGER NOT NULL DEFAULT 0,-- email proven via Google or email OTP

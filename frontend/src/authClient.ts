@@ -76,46 +76,16 @@ export class OtpError extends Error {
   }
 }
 
-/** Ask the backend to email a one-time sign-in code. In development (no
-    mailer configured) the backend echoes the code back as `debugCode`. */
-export async function requestOtp(email: string): Promise<{ debugCode?: string }> {
+/** Email + password sign-in (no OTP). Stores the session and returns the user
+    on success. A wrong email/password surfaces as `invalid_credentials`. */
+export async function login(email: string, password: string): Promise<AuthUser> {
   if (!API_URL) throw new OtpError("auth_unavailable", 0);
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/auth/otp/request`, {
+    res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-  } catch {
-    throw new OtpError("network", 0);
-  }
-  const data = (await res.json().catch(() => ({}))) as {
-    ok?: boolean;
-    debugCode?: string;
-    error?: string;
-    retryAfterSeconds?: number;
-  };
-  if (!res.ok) {
-    throw new OtpError(
-      data.error ?? "request_failed",
-      res.status,
-      data.retryAfterSeconds
-    );
-  }
-  return { debugCode: data.debugCode };
-}
-
-/** Verify an emailed code; on success stores the session and returns the
-    signed-in user. */
-export async function verifyOtp(email: string, code: string): Promise<AuthUser> {
-  if (!API_URL) throw new OtpError("auth_unavailable", 0);
-  let res: Response;
-  try {
-    res = await fetch(`${API_URL}/auth/otp/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ email, password }),
     });
   } catch {
     throw new OtpError("network", 0);
@@ -126,15 +96,16 @@ export async function verifyOtp(email: string, code: string): Promise<AuthUser> 
     error?: string;
   };
   if (!res.ok || !data.token || !data.user) {
-    throw new OtpError(data.error ?? "verify_failed", res.status);
+    throw new OtpError(data.error ?? "invalid_credentials", res.status);
   }
   saveToken(data.token);
   return data.user;
 }
 
 /* ---------------------------------------------------------------
-   Registration (one-time). Sign-up collects name + email + phone and
-   sends the code to the email only; the phone is stored, not verified.
+   Registration (one-time). Sign-up collects name + email + phone +
+   password and sends a code to the email only (the phone is stored, not
+   verified). After sign-up, all sign-ins use email + password (`login`).
    The backend rejects an already-registered email or phone.
 ---------------------------------------------------------------- */
 
@@ -142,6 +113,7 @@ export interface SignupInput {
   name: string;
   email: string;
   phone: string;
+  password: string;
 }
 
 /** Ask the backend to email a sign-up code, after checking the email and
