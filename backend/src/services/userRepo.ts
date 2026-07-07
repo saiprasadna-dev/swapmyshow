@@ -46,6 +46,17 @@ const nameFromEmail = (email: string): string => {
   return cleaned.replace(/\b\w/g, (ch) => ch.toUpperCase())
 }
 
+/** Load a user by primary key, or null if the row no longer exists. */
+export async function getUserById(
+  db: D1Database,
+  id: number
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`SELECT * FROM users WHERE id = ?1 LIMIT 1`)
+    .bind(id)
+    .first<UserRow>()
+}
+
 /**
  * Find-or-create the user for a verified Google profile.
  * Matches on google_sub first, then falls back to email so an account that
