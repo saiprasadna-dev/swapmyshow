@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchMe, signOut, type AuthUser } from "./authClient";
 import SignUp from "./screens/SignUp";
+import AddPhone from "./screens/AddPhone";
 import Home from "./screens/Home";
 import Search from "./screens/Search";
 import ListingDetail from "./screens/Listing";
@@ -12,6 +13,7 @@ import Rate from "./screens/Rate";
 
 export type Screen =
   | { name: "signup" }
+  | { name: "addphone" }
   | { name: "home" }
   | { name: "search" }
   | { name: "post" }
@@ -26,13 +28,26 @@ function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const go = (s: Screen) => setScreen(s);
 
+  // After any sign-in, everyone must have a phone on file: send accounts
+  // without one (e.g. Google sign-ups) to the one-time add-phone step.
+  const afterAuth = (u: AuthUser) => {
+    setUser(u);
+    go(u.phone ? { name: "home" } : { name: "addphone" });
+  };
+
   // restore an existing session on load (verified against the backend)
   useEffect(() => {
     let active = true;
     fetchMe().then((u) => {
       if (active && u) {
         setUser(u);
-        setScreen((s) => (s.name === "signup" ? { name: "home" } : s));
+        setScreen((s) =>
+          s.name === "signup"
+            ? u.phone
+              ? { name: "home" }
+              : { name: "addphone" }
+            : s
+        );
       }
     });
     return () => {
@@ -49,12 +64,15 @@ function App() {
   return (
     <div className="phone">
       {screen.name === "signup" && (
-        <SignUp
-          onDone={() => go({ name: "home" })}
-          onUser={(u) => {
+        <SignUp onDone={() => go({ name: "home" })} onUser={afterAuth} />
+      )}
+      {screen.name === "addphone" && (
+        <AddPhone
+          onDone={(u) => {
             setUser(u);
             go({ name: "home" });
           }}
+          onSignOut={handleSignOut}
         />
       )}
       {screen.name === "home" && <Home go={go} />}

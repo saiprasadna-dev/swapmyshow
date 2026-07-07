@@ -10,6 +10,18 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254
 }
 
+/** Normalize a phone number: keep an optional leading + and the digits only. */
+export function normalizePhone(raw: string): string {
+  const trimmed = raw.trim()
+  const plus = trimmed.startsWith('+') ? '+' : ''
+  return plus + trimmed.replace(/\D/g, '')
+}
+
+/** Accept 10–15 digits, optionally prefixed with a country code (+). */
+export function isValidPhone(phone: string): boolean {
+  return /^\+?\d{10,15}$/.test(phone)
+}
+
 /** Cryptographically-random numeric code of the requested length. */
 export function generateCode(length: number): string {
   const digits = new Uint32Array(length)

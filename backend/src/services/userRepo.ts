@@ -4,6 +4,7 @@ export type UserRow = {
   id: number
   name: string
   email: string | null
+  phone: string | null
   picture: string | null
   google_sub: string | null
   id_verified: number
@@ -18,6 +19,7 @@ export type PublicUser = {
   id: number
   name: string
   email: string | null
+  phone: string | null
   picture: string | null
   idVerified: boolean
   emailVerified: boolean
@@ -30,6 +32,7 @@ export const toPublicUser = (u: UserRow): PublicUser => ({
   id: u.id,
   name: u.name,
   email: u.email,
+  phone: u.phone,
   picture: u.picture,
   idVerified: u.id_verified === 1,
   emailVerified: u.email_verified === 1,
@@ -37,14 +40,6 @@ export const toPublicUser = (u: UserRow): PublicUser => ({
   rating: u.rating,
   swaps: u.swap_count,
 })
-
-/** A friendly default display name derived from an email local part. */
-const nameFromEmail = (email: string): string => {
-  const local = email.split('@')[0] ?? email
-  const cleaned = local.replace(/[._-]+/g, ' ').trim()
-  if (!cleaned) return email
-  return cleaned.replace(/\b\w/g, (ch) => ch.toUpperCase())
-}
 
 /** Load a user by primary key, or null if the row no longer exists. */
 export async function getUserById(
@@ -54,6 +49,78 @@ export async function getUserById(
   return await db
     .prepare(`SELECT * FROM users WHERE id = ?1 LIMIT 1`)
     .bind(id)
+    .first<UserRow>()
+}
+
+/** Load a user by email, or null. Used to tell sign-up from log-in. */
+export async function getUserByEmail(
+  db: D1Database,
+  email: string
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`SELECT * FROM users WHERE email = ?1 LIMIT 1`)
+    .bind(email)
+    .first<UserRow>()
+}
+
+/** Load a user by phone number, or null. Enforces one-account-per-phone. */
+export async function getUserByPhone(
+  db: D1Database,
+  phone: string
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`SELECT * FROM users WHERE phone = ?1 LIMIT 1`)
+    .bind(phone)
+    .first<UserRow>()
+}
+
+/**
+ * Create a user from the sign-up form (name + email + phone), with the email
+ * proven via OTP (email_verified = 1). Phone is stored but not verified — no
+ * OTP is sent to it. Callers must have already checked email/phone uniqueness.
+ */
+export async function createProfileUser(
+  db: D1Database,
+  input: { name: string; email: string; phone: string }
+): Promise<UserRow> {
+  const inserted = await db
+    .prepare(
+      `INSERT INTO users (name, email, phone, email_verified)
+       VALUES (?1, ?2, ?3, 1)
+       RETURNING *`
+    )
+    .bind(input.name, input.email, input.phone)
+    .first<UserRow>()
+  if (!inserted) throw new Error('failed to create user')
+  return inserted
+}
+
+/** Mark an existing account's email as verified (a returning OTP log-in). */
+export async function markEmailVerified(
+  db: D1Database,
+  id: number
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`UPDATE users SET email_verified = 1 WHERE id = ?1 RETURNING *`)
+    .bind(id)
+    .first<UserRow>()
+}
+
+/**
+ * Attach a phone number to an account that doesn't have one yet (one-time).
+ * The WHERE guard makes this a no-op if a phone is already set, so it can't be
+ * changed later. Returns the updated row, or null if nothing was updated.
+ */
+export async function setUserPhone(
+  db: D1Database,
+  id: number,
+  phone: string
+): Promise<UserRow | null> {
+  return await db
+    .prepare(
+      `UPDATE users SET phone = ?1 WHERE id = ?2 AND phone IS NULL RETURNING *`
+    )
+    .bind(phone, id)
     .first<UserRow>()
 }
 
@@ -100,43 +167,6 @@ export async function upsertGoogleUser(
        RETURNING *`
     )
     .bind(p.name, p.email, p.picture ?? null, p.sub)
-    .first<UserRow>()
-  if (!inserted) throw new Error('failed to create user')
-  return inserted
-}
-
-/**
- * Find-or-create the user for an email proven via OTP. Existing accounts (from
- * Google or a prior OTP sign-in) are matched by email and flagged
- * email_verified; new ones get a friendly default name from the address.
- * Unlike Google, an email OTP does not set id_verified — that badge is reserved
- * for stronger identity checks.
- */
-export async function upsertEmailUser(
-  db: D1Database,
-  email: string
-): Promise<UserRow> {
-  const existing = await db
-    .prepare(`SELECT * FROM users WHERE email = ?1 LIMIT 1`)
-    .bind(email)
-    .first<UserRow>()
-
-  if (existing) {
-    const updated = await db
-      .prepare(`UPDATE users SET email_verified = 1 WHERE id = ?1 RETURNING *`)
-      .bind(existing.id)
-      .first<UserRow>()
-    if (!updated) throw new Error('failed to update user')
-    return updated
-  }
-
-  const inserted = await db
-    .prepare(
-      `INSERT INTO users (name, email, email_verified)
-       VALUES (?1, ?2, 1)
-       RETURNING *`
-    )
-    .bind(nameFromEmail(email), email)
     .first<UserRow>()
   if (!inserted) throw new Error('failed to create user')
   return inserted

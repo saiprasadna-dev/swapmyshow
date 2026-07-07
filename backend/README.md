@@ -24,8 +24,11 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
 - `GET /` - health check endpoint returns API running message
 - `GET /health` - service health response
 - `POST /auth/google` - verify a Google ID token and return a session
-- `POST /auth/otp/request` - email a one-time sign-in code to `{ email }`
-- `POST /auth/otp/verify` - exchange `{ email, code }` for a session
+- `POST /auth/otp/request` - email a one-time code. `{ email }` (log in) or
+  `{ mode: "signup", name, email, phone }` (register — checks email/phone are free)
+- `POST /auth/otp/verify` - exchange the code for a session. Log in requires an
+  existing account (`no_account` otherwise); sign-up creates it from name/email/phone
+- `POST /auth/phone` *(auth)* - attach a phone to the signed-in account (one-time)
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
 
 ### Listings
