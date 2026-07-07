@@ -74,6 +74,7 @@ textarea {
 
 /* ------------------------------- app frame ------------------- */
 .phone {
+  width: 100%;
   max-width: 430px;
   min-height: 100svh;
   margin: 0 auto;
@@ -82,9 +83,43 @@ textarea {
   flex-direction: column;
   position: relative;
 }
-@media (min-width: 500px) {
+
+/* Tablets & laptops: instead of a bare 430px column on a blank page,
+   render the app as a centred device frame on a branded backdrop.
+   The frame has a fixed height and each screen scrolls inside it,
+   so the UI fits any viewport without ever showing the raw column. */
+@media (min-width: 600px) {
+  body {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+    background: radial-gradient(
+        115% 85% at 100% 0%,
+        rgba(108, 61, 244, 0.18),
+        transparent 58%
+      ),
+      radial-gradient(
+        115% 90% at 0% 100%,
+        rgba(14, 159, 110, 0.13),
+        transparent 55%
+      ),
+      #eae6f5;
+  }
   .phone {
-    border-inline: 1px solid var(--line);
+    height: min(880px, calc(100svh - 56px));
+    min-height: 0;
+    border: 1px solid var(--line);
+    border-radius: 30px;
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
+      0 44px 90px -44px rgba(23, 18, 37, 0.55);
+    overflow: hidden;
+  }
+  /* each screen becomes the scroll region within the frame */
+  .screen {
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 }
 .screen {
@@ -499,6 +534,20 @@ input[type="range"] {
 }
 .bottom-nav .nav-post span:last-child {
   color: var(--purple);
+}
+/* inside the device frame, pin the nav to the frame's bottom edge
+   instead of the viewport so it tracks the app card, not the page */
+@media (min-width: 600px) {
+  .bottom-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    transform: none;
+    border-radius: 0 0 30px 30px;
+    padding-bottom: 12px;
+  }
 }
 
 /* ------------------------------- chat ------------------------ */
