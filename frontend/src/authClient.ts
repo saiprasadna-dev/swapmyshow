@@ -103,6 +103,71 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 }
 
 /* ---------------------------------------------------------------
+   Forgot password: email a reset code, then set a new password with it.
+   The request call always succeeds for a well-formed email (it never
+   reveals whether the account exists); a dev backend returns debugCode.
+---------------------------------------------------------------- */
+
+export async function requestPasswordReset(
+  email: string
+): Promise<{ debugCode?: string }> {
+  if (!API_URL) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/password/forgot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    debugCode?: string;
+    error?: string;
+    retryAfterSeconds?: number;
+  };
+  if (!res.ok) {
+    throw new OtpError(
+      data.error ?? "request_failed",
+      res.status,
+      data.retryAfterSeconds
+    );
+  }
+  return { debugCode: data.debugCode };
+}
+
+/** Verify the reset code and set a new password; signs the user in on success. */
+export async function resetPassword(
+  email: string,
+  code: string,
+  password: string
+): Promise<AuthUser> {
+  if (!API_URL) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/password/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, password }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    token?: string;
+    user?: AuthUser;
+    error?: string;
+  };
+  if (!res.ok || !data.token || !data.user) {
+    throw new OtpError(data.error ?? "reset_failed", res.status);
+  }
+  saveToken(data.token);
+  return data.user;
+}
+
+/* ---------------------------------------------------------------
    Registration (one-time). Sign-up collects name + email + phone +
    password and sends a code to the email only (the phone is stored, not
    verified). After sign-up, all sign-ins use email + password (`login`).

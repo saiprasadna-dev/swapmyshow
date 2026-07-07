@@ -30,6 +30,10 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
   verifies the emailed code and creates the account (password stored hashed)
 - `POST /auth/login` - `{ email, password }` — email + password sign-in (no OTP);
   a wrong email/password returns a generic `invalid_credentials`
+- `POST /auth/password/forgot` - `{ email }` — email a reset code. Always returns
+  `ok` for a valid email (never reveals whether an account exists)
+- `POST /auth/password/reset` - `{ email, code, password }` — verify the code and
+  set a new password; signs the user in on success
 - `POST /auth/phone` *(auth)* - attach a phone to the signed-in account (one-time)
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
 

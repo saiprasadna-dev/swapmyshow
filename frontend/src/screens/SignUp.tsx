@@ -6,6 +6,8 @@ import {
   login,
   requestSignupOtp,
   verifySignupOtp,
+  requestPasswordReset,
+  resetPassword,
   OtpError,
   type AuthUser,
 } from "../authClient";
@@ -20,6 +22,7 @@ export default function SignUp({
   onUser: (user: AuthUser) => void;
 }) {
   const [mode, setMode] = useState<Mode>("login");
+  const [forgot, setForgot] = useState(false);
 
   return (
     <div className="screen no-nav" style={{ justifyContent: "center", gap: 18 }}>
@@ -43,27 +46,31 @@ export default function SignUp({
 
       <div className="ticket" style={{ padding: 18 }}>
         {apiConfigured ? (
-          <>
-            <div className="tab-row" role="tablist" aria-label="Log in or sign up" style={{ marginBottom: 14 }}>
-              {(["login", "signup"] as Mode[]).map((m) => (
-                <button
-                  key={m}
-                  role="tab"
-                  aria-selected={mode === m}
-                  className={`chip ${mode === m ? "on" : ""}`}
-                  style={{ flex: 1, textAlign: "center" }}
-                  onClick={() => setMode(m)}
-                >
-                  {m === "login" ? "Log in" : "Sign up"}
-                </button>
-              ))}
-            </div>
-            {mode === "login" ? (
-              <LoginForm onUser={onUser} />
-            ) : (
-              <SignupForm onUser={onUser} />
-            )}
-          </>
+          forgot ? (
+            <ForgotForm onUser={onUser} onBack={() => setForgot(false)} />
+          ) : (
+            <>
+              <div className="tab-row" role="tablist" aria-label="Log in or sign up" style={{ marginBottom: 14 }}>
+                {(["login", "signup"] as Mode[]).map((m) => (
+                  <button
+                    key={m}
+                    role="tab"
+                    aria-selected={mode === m}
+                    className={`chip ${mode === m ? "on" : ""}`}
+                    style={{ flex: 1, textAlign: "center" }}
+                    onClick={() => setMode(m)}
+                  >
+                    {m === "login" ? "Log in" : "Sign up"}
+                  </button>
+                ))}
+              </div>
+              {mode === "login" ? (
+                <LoginForm onUser={onUser} onForgot={() => setForgot(true)} />
+              ) : (
+                <SignupForm onUser={onUser} />
+              )}
+            </>
+          )
         ) : (
           <DemoContinue onDone={onDone} />
         )}
@@ -111,7 +118,13 @@ const phoneOk = (v: string) => /^\+?\d{10,15}$/.test(v.replace(/[\s()-]/g, ""));
 const passwordOk = (v: string) => v.length >= 8;
 
 /** Log in with email + password — no code step. */
-function LoginForm({ onUser }: { onUser: (u: AuthUser) => void }) {
+function LoginForm({
+  onUser,
+  onForgot,
+}: {
+  onUser: (u: AuthUser) => void;
+  onForgot: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -161,6 +174,176 @@ function LoginForm({ onUser }: { onUser: (u: AuthUser) => void }) {
       </div>
       <button className="btn btn-primary" onClick={submit} disabled={busy || !canSubmit}>
         {busy ? "Signing in…" : "Log in"}
+      </button>
+      <button
+        type="button"
+        className="linklike"
+        style={{ margin: "10px auto 0", display: "block" }}
+        onClick={onForgot}
+      >
+        Forgot password?
+      </button>
+      {error && <FormError message={error} />}
+    </>
+  );
+}
+
+/** Forgot password: enter email → emailed code → set a new password. On
+    success the user is signed in with the new password. */
+function ForgotForm({
+  onUser,
+  onBack,
+}: {
+  onUser: (u: AuthUser) => void;
+  onBack: () => void;
+}) {
+  const [step, setStep] = useState<"email" | "reset">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [devCode, setDevCode] = useState<string>();
+  const codeRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (step === "reset") codeRef.current?.focus();
+  }, [step]);
+
+  const send = async () => {
+    if (!emailOk(email) || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { debugCode } = await requestPasswordReset(email.trim().toLowerCase());
+      setDevCode(debugCode);
+      setStep("reset");
+      setCode("");
+      setPassword("");
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    if (code.length < 6 || !passwordOk(password) || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const user = await resetPassword(email.trim().toLowerCase(), code, password);
+      onUser(user);
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (step === "reset") {
+    return (
+      <>
+        <h3 style={{ margin: "0 0 12px" }}>Reset password</h3>
+        <div className="field" style={{ marginBottom: 10 }}>
+          <label htmlFor="reset-code">Code</label>
+          <input
+            id="reset-code"
+            ref={codeRef}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="123456"
+            style={{ letterSpacing: 6, fontFamily: "var(--mono)" }}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
+        </div>
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label htmlFor="reset-password">New password</label>
+          <input
+            id="reset-password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+          />
+        </div>
+        <p className="small muted" style={{ margin: "0 0 12px" }}>
+          Sent to {email}.{" "}
+          <button
+            type="button"
+            className="linklike"
+            onClick={() => {
+              setStep("email");
+              setError("");
+            }}
+          >
+            Change
+          </button>
+        </p>
+
+        {devCode && (
+          <div className="google-hint" style={{ marginBottom: 12 }}>
+            <strong>Dev mode</strong>
+            <span>
+              No mailer configured — your code is <code>{devCode}</code>.
+            </span>
+          </div>
+        )}
+
+        <button
+          className="btn btn-primary"
+          onClick={submit}
+          disabled={busy || code.length < 6 || !passwordOk(password)}
+        >
+          {busy ? "Updating…" : "Update password"}
+        </button>
+        <button
+          type="button"
+          className="linklike"
+          style={{ margin: "10px auto 0", display: "block" }}
+          onClick={send}
+          disabled={busy}
+        >
+          Resend code
+        </button>
+        {error && <FormError message={error} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h3 style={{ margin: "0 0 4px" }}>Forgot password</h3>
+      <p className="small muted" style={{ margin: "0 0 12px" }}>
+        Enter your email and we'll send a reset code.
+      </p>
+      <div className="field" style={{ marginBottom: 12 }}>
+        <label htmlFor="forgot-email">Email</label>
+        <input
+          id="forgot-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@gmail.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+        />
+      </div>
+      <button className="btn btn-primary" onClick={send} disabled={busy || !emailOk(email)}>
+        {busy ? "Sending…" : "Send reset code"}
+      </button>
+      <button
+        type="button"
+        className="linklike"
+        style={{ margin: "10px auto 0", display: "block" }}
+        onClick={onBack}
+      >
+        Back to log in
       </button>
       {error && <FormError message={error} />}
     </>
@@ -372,6 +555,8 @@ function authErrorMessage(err: unknown): string {
       return "That email is already registered — log in instead.";
     case "phone_taken":
       return "That phone number is already registered — log in instead.";
+    case "no_account":
+      return "No account found for that email.";
     case "otp_cooldown":
       return `Please wait ${retry ?? 60}s before requesting another code.`;
     case "email_send_failed":

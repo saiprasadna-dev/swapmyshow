@@ -16,6 +16,10 @@ app.post('/otp/verify', authController.verifyOtp)
 // Email + password sign-in (no OTP).
 app.post('/login', authController.login)
 
+// Forgot password: email a reset code, then set a new password with it.
+app.post('/password/forgot', authController.forgotPassword)
+app.post('/password/reset', authController.resetPassword)
+
 // Attach a phone number to the signed-in account (one-time).
 app.post('/phone', requireAuth, authController.setPhone)
 

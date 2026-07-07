@@ -68,6 +68,47 @@ export async function sendEmail(
   return { delivered: true }
 }
 
+/** Build a code email for a given purpose (sign-in vs password reset). */
+function buildCodeEmail(
+  appName: string,
+  code: string,
+  ttlMinutes: number,
+  opts: { subject: string; heading: string; lead: string }
+): { subject: string; html: string; text: string } {
+  const text =
+    `${opts.lead} Your ${appName} code is ${code}.\n` +
+    `It expires in ${ttlMinutes} minute${ttlMinutes === 1 ? '' : 's'}.\n\n` +
+    `If you didn't request this, you can ignore this email.`
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
+    <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;text-align:center">
+      <h1 style="margin:0 0 8px;font-size:18px">${opts.heading}</h1>
+      <p style="margin:0 0 24px;color:#555;font-size:14px">${opts.lead}</p>
+      <div style="font-size:34px;font-weight:700;letter-spacing:8px;padding:16px 0">${code}</div>
+      <p style="margin:24px 0 0;color:#888;font-size:12px">
+        This code expires in ${ttlMinutes} minute${ttlMinutes === 1 ? '' : 's'}.
+        If you didn't request it, you can safely ignore this email.
+      </p>
+    </div>
+  </body>
+</html>`
+  return { subject: opts.subject, html, text }
+}
+
+/** Build the password-reset code email. */
+export function buildResetEmail(
+  appName: string,
+  code: string,
+  ttlMinutes: number
+): { subject: string; html: string; text: string } {
+  return buildCodeEmail(appName, code, ttlMinutes, {
+    subject: `${code} is your ${appName} password reset code`,
+    heading: `${appName} password reset`,
+    lead: 'Enter this code to reset your password:',
+  })
+}
+
 /** Build the sign-in code email (both HTML and plain-text parts). */
 export function buildOtpEmail(
   appName: string,

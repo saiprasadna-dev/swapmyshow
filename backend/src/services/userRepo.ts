@@ -97,6 +97,18 @@ export async function createProfileUser(
   return inserted
 }
 
+/** Set (or replace) an account's password hash — used by password reset. */
+export async function setUserPassword(
+  db: D1Database,
+  id: number,
+  passwordHash: string
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`UPDATE users SET password_hash = ?1 WHERE id = ?2 RETURNING *`)
+    .bind(passwordHash, id)
+    .first<UserRow>()
+}
+
 /** Mark an existing account's email as verified (a returning OTP log-in). */
 export async function markEmailVerified(
   db: D1Database,

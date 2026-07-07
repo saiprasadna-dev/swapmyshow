@@ -16,6 +16,7 @@ import {
   getUserByPhone,
   createProfileUser,
   setUserPhone,
+  setUserPassword,
   toPublicUser,
 } from '../services/userRepo'
 import {
@@ -26,7 +27,7 @@ import {
   requestOtp as issueOtp,
   verifyOtp as checkOtp,
 } from '../services/otp'
-import { sendEmail, buildOtpEmail, MailError } from '../services/mailer'
+import { sendEmail, buildOtpEmail, buildResetEmail, MailError } from '../services/mailer'
 import { hashPassword, verifyPassword, isValidPassword } from '../services/password'
 
 export const authController = {
@@ -272,6 +273,112 @@ export const authController = {
       session.sessionTtlDays
     )
     return c.json({ token, user: toPublicUser(existing) })
+  },
+
+  /** POST /auth/password/forgot — email a reset code. Always returns ok for a
+      well-formed email (never reveals whether an account exists); only sends a
+      code when an account is actually found. */
+  forgotPassword: async (c: Context<AppEnv>) => {
+    const body = (await c.req.json().catch(() => null)) as {
+      email?: unknown
+    } | null
+    const email = normalizeEmail(typeof body?.email === 'string' ? body.email : '')
+    if (!email || !isValidEmail(email)) {
+      return c.json({ error: 'invalid_email' }, 400)
+    }
+
+    const user = await getUserByEmail(c.env.DB, email)
+    if (!user) {
+      // Don't disclose that the address isn't registered.
+      return c.json({ ok: true })
+    }
+
+    const otpConfig = getOtpConfig(c.env)
+    const result = await issueOtp(c.env.DB, email, otpConfig)
+    if (!result.ok) {
+      c.header('Retry-After', String(result.retryAfterSeconds))
+      return c.json(
+        { error: 'otp_cooldown', retryAfterSeconds: result.retryAfterSeconds },
+        429
+      )
+    }
+
+    const mailer = getMailerConfig(c.env)
+    const ttlMinutes = Math.round(otpConfig.ttlSeconds / 60)
+    const mail = buildResetEmail(mailer.appName, result.code, ttlMinutes)
+    try {
+      const { delivered } = await sendEmail(mailer, {
+        to: email,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+      })
+      const devMode =
+        !delivered && (c.env.ENVIRONMENT ?? 'development') === 'development'
+      return c.json({ ok: true, ...(devMode ? { debugCode: result.code } : {}) })
+    } catch (err) {
+      if (err instanceof MailError) {
+        console.error('Reset email delivery failed:', err.message)
+        return c.json({ error: 'email_send_failed' }, 502)
+      }
+      throw err
+    }
+  },
+
+  /** POST /auth/password/reset — verify the emailed code and set a new password.
+      On success the caller is signed in with a fresh session. */
+  resetPassword: async (c: Context<AppEnv>) => {
+    let session
+    try {
+      session = getSessionConfig(c.env)
+    } catch (err) {
+      if (err instanceof ConfigError) {
+        console.error('Auth misconfigured:', err.message)
+        return c.json({ error: 'auth_unavailable' }, 503)
+      }
+      throw err
+    }
+
+    const body = (await c.req.json().catch(() => null)) as {
+      email?: unknown
+      code?: unknown
+      password?: unknown
+    } | null
+    const email = normalizeEmail(typeof body?.email === 'string' ? body.email : '')
+    const code = typeof body?.code === 'string' ? body.code.trim() : ''
+    const password = typeof body?.password === 'string' ? body.password : ''
+    if (!email || !isValidEmail(email)) {
+      return c.json({ error: 'invalid_email' }, 400)
+    }
+    if (!code) return c.json({ error: 'missing_code' }, 400)
+    // Validate the new password before burning the code.
+    if (!isValidPassword(password)) {
+      return c.json({ error: 'weak_password' }, 400)
+    }
+
+    const otpConfig = getOtpConfig(c.env)
+    const result = await checkOtp(c.env.DB, email, code, otpConfig)
+    if (!result.ok) {
+      return c.json({ error: result.reason }, 401)
+    }
+
+    const user = await getUserByEmail(c.env.DB, email)
+    if (!user) return c.json({ error: 'no_account' }, 404)
+
+    const passwordHash = await hashPassword(password)
+    const updated = (await setUserPassword(c.env.DB, user.id, passwordHash)) ?? user
+    const token = await issueSession(
+      {
+        id: updated.id,
+        sub: `user:${updated.id}`,
+        email: updated.email ?? email,
+        name: updated.name,
+        picture: updated.picture ?? undefined,
+      },
+      session.sessionSecret,
+      session.sessionTtlDays
+    )
+    return c.json({ token, user: toPublicUser(updated) })
   },
 
   /** POST /auth/phone — attach a phone number to the signed-in account. Used
