@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "wrangler dev",
     "build": "tsc -p tsconfig.json",
-    "deploy": "wrangler deploy"
+    "migrate": "wrangler d1 migrations apply swapmyshow-db --remote",
+    "migrate:local": "wrangler d1 migrations apply swapmyshow-db --local",
+    "seed:local": "wrangler d1 execute swapmyshow-db --local --file src/database/seed.sql",
+    "deploy": "npm run migrate && wrangler deploy"
   },
   "dependencies": {
     "hono": "^4.12.28",
