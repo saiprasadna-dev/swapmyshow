@@ -12,6 +12,7 @@ import { issueSession } from '../services/session'
 import {
   upsertGoogleUser,
   upsertEmailUser,
+  getUserById,
   toPublicUser,
 } from '../services/userRepo'
 import {
@@ -162,9 +163,16 @@ export const authController = {
     return c.json({ token, user: toPublicUser(user) })
   },
 
-  /** GET /auth/me — return the caller identified by their session token. */
-  me: (c: Context<AppEnv>) => {
-    const user = c.get('user')
-    return c.json({ user })
+  /** GET /auth/me — return the caller's full, current profile (verification
+      flags, rating, swaps) loaded from the database, not just the token
+      claims — so the UI reflects live state after a reload. */
+  me: async (c: Context<AppEnv>) => {
+    const principal = c.get('user')
+    const row = await getUserById(c.env.DB, principal.id)
+    if (!row) {
+      // Valid session but the account is gone — treat as signed out.
+      return c.json({ error: 'unauthorized' }, 401)
+    }
+    return c.json({ user: toPublicUser(row) })
   },
 }

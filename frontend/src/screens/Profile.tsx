@@ -18,6 +18,20 @@ export default function Profile({
   const [tab, setTab] = useState<(typeof tabs)[number]>("Selling");
 
   const name = user?.name ?? me.name;
+  const rating = user?.rating ?? me.rating;
+  const swaps = user?.swaps ?? me.swaps;
+
+  // Highest-trust badge the account has earned. Google sign-in sets ID; an
+  // email OTP proves the address; demo (no session) keeps the sample badge.
+  const trustBadge = !user ? (
+    <Verified />
+  ) : user.idVerified ? (
+    <Verified label="ID verified" />
+  ) : user.emailVerified ? (
+    <Verified label="Email verified" />
+  ) : user.phoneVerified ? (
+    <Verified label="Phone verified" />
+  ) : null;
 
   const items =
     tab === "Selling"
@@ -44,17 +58,16 @@ export default function Profile({
         )}
         <div className="row" style={{ justifyContent: "center", gap: 6 }}>
           <h2>{name}</h2>
-          <Verified />
+          {trustBadge}
         </div>
-        {user?.email ? (
+        {user?.email && (
           <p className="small muted" style={{ margin: "4px 0 0" }}>
             {user.email}
           </p>
-        ) : (
-          <p className="small muted" style={{ margin: "4px 0 0" }}>
-            ★★★★★ {me.rating.toFixed(1)} · {me.swaps} swaps
-          </p>
         )}
+        <p className="small muted" style={{ margin: "2px 0 0" }}>
+          ★ {rating.toFixed(1)} · {swaps} {swaps === 1 ? "swap" : "swaps"}
+        </p>
       </div>
 
       <div className="tab-row" role="tablist" aria-label="My tickets">
