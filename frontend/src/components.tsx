@@ -79,7 +79,7 @@ export function SellerCard({ listing }: { listing: Listing }) {
       className="ticket row"
       style={{
         background: "var(--trust-bg)",
-        borderColor: "rgba(14,159,110,.3)",
+        borderColor: "var(--brand-border)",
       }}
     >
       <div className="avatar">{s.name[0]}</div>

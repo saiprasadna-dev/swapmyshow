@@ -208,7 +208,7 @@ export default function PostTicket({
             textAlign: "center",
             cursor: "pointer",
             ...(screenshotUrl
-              ? { background: "var(--trust-bg)", color: "var(--trust)", borderColor: "rgba(14,159,110,.4)" }
+              ? { background: "var(--trust-bg)", color: "var(--trust)", borderColor: "var(--brand-border)" }
               : {}),
           }}
         >
@@ -263,7 +263,7 @@ export default function PostTicket({
 
       <div style={{ marginTop: "auto", paddingTop: 18 }}>
         {posted !== null ? (
-          <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "rgba(14,159,110,.3)" }}>
+          <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "var(--brand-border)" }}>
             <strong style={{ color: "var(--trust)" }}>
               {editing ? "✓ Listing updated" : "✓ Listing posted"}
             </strong>
