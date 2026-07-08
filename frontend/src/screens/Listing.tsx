@@ -80,7 +80,7 @@ export default function ListingDetail({
       <SellerCard listing={l} />
 
       <div className="ticket" style={{ marginTop: 12, padding: 0, overflow: "hidden", ["--notch-y" as never]: "62%" }}>
-        <div className="poster poster-lg" aria-hidden>
+        <div className={`poster poster-lg poster-cat-${l.category.toLowerCase()}`} aria-hidden>
           {l.emoji}
         </div>
         <div style={{ padding: 14 }}>

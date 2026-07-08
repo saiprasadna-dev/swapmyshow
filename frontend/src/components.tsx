@@ -26,7 +26,7 @@ export function TicketCard({
   const l = listing;
   return (
     <button className="ticket listing-card" onClick={onOpen}>
-      <div className="poster" aria-hidden>
+      <div className={`poster poster-cat-${l.category.toLowerCase()}`} aria-hidden>
         {l.emoji}
       </div>
       <div className="listing-body">
