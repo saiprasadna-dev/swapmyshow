@@ -120,6 +120,17 @@ export async function markEmailVerified(
     .first<UserRow>()
 }
 
+/** Mark an account's phone as verified (after a successful phone OTP). */
+export async function markPhoneVerified(
+  db: D1Database,
+  id: number
+): Promise<UserRow | null> {
+  return await db
+    .prepare(`UPDATE users SET phone_verified = 1 WHERE id = ?1 RETURNING *`)
+    .bind(id)
+    .first<UserRow>()
+}
+
 /**
  * Attach a phone number to an account that doesn't have one yet (one-time).
  * The WHERE guard makes this a no-op if a phone is already set, so it can't be

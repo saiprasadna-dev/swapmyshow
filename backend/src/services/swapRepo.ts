@@ -16,6 +16,8 @@ export type SwapRow = {
   step: SwapStep
   buyer_confirmed_receipt: number
   seller_marked_transferred: number
+  offer_price: number | null
+  offer_by: number | null
   created_at: string | null
 }
 
@@ -33,6 +35,9 @@ export type PublicSwap = {
   /** The buyer's display name — so the seller side of a chat can show who it
       is with (the seller is already available via `listing.seller`). */
   buyerName: string
+  /** Pending in-chat price offer, if any, and who proposed it. */
+  offerPrice: number | null
+  offerBy: number | null
   listing: PublicListing
 }
 
@@ -52,6 +57,8 @@ const rowToPublic = (
   sellerMarkedTransferred: row.seller_marked_transferred === 1,
   role: userId === row.buyer_id ? 'buyer' : 'seller',
   buyerName,
+  offerPrice: row.offer_price ?? null,
+  offerBy: row.offer_by ?? null,
   listing,
 })
 
@@ -202,6 +209,40 @@ export async function confirmReceipt(
     buyer_confirmed_receipt: 1,
     step: row.step === 'agree' || row.step === 'transfer' ? 'rate' : row.step,
   })
+}
+
+/** Propose (or replace) the pending price for a swap. Either party may offer;
+    the newest offer supersedes any previous one. */
+export async function makeOffer(
+  db: D1Database,
+  swapId: number,
+  userId: number,
+  price: number
+): Promise<void> {
+  await db
+    .prepare(`UPDATE swaps SET offer_price = ?1, offer_by = ?2 WHERE id = ?3`)
+    .bind(price, userId, swapId)
+    .run()
+}
+
+/** Accept the pending offer: copy it into agreed_price and clear it. Only the
+    party who did NOT make the offer can accept. */
+export async function acceptOffer(
+  db: D1Database,
+  row: SwapRow,
+  userId: number
+): Promise<{ price: number } | { error: 'no_offer' | 'own_offer' }> {
+  if (row.offer_price == null) return { error: 'no_offer' }
+  if (row.offer_by === userId) return { error: 'own_offer' }
+  const price = row.offer_price
+  await db
+    .prepare(
+      `UPDATE swaps SET agreed_price = ?1, offer_price = NULL, offer_by = NULL
+        WHERE id = ?2`
+    )
+    .bind(price, row.id)
+    .run()
+  return { price }
 }
 
 /** All swaps where the user is the buyer (Profile → Bought), newest-first. */

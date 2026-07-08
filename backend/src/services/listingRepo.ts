@@ -51,6 +51,7 @@ export type PublicListing = {
   city: string | null
   status: string
   hasScreenshot: boolean
+  screenshotUrl: string | null
   seller: {
     id: number
     name: string
@@ -59,6 +60,11 @@ export type PublicListing = {
     verified: boolean
   }
 }
+
+/** True when a stored screenshot value is a real upload path/URL (not the old
+    'pending-upload' placeholder). */
+const isImageUrl = (v: string | null): v is string =>
+  typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('http'))
 
 /** Split the stored "G12,G13" seats string into a trimmed, non-empty list. */
 const parseSeats = (seats: string | null): string[] =>
@@ -80,7 +86,10 @@ export const toPublicListing = (l: ListingRow): PublicListing => ({
   price: l.ask_price,
   city: l.city,
   status: l.status,
-  hasScreenshot: Boolean(l.screenshot_url),
+  // Only treat a stored value as an image if it's a real upload path/URL, so
+  // the legacy 'pending-upload' placeholder never renders as a broken image.
+  hasScreenshot: isImageUrl(l.screenshot_url),
+  screenshotUrl: isImageUrl(l.screenshot_url) ? l.screenshot_url : null,
   seller: {
     id: l.seller_id,
     name: l.seller_name,
@@ -111,6 +120,8 @@ export type ListingInput = {
   ask: number
   city: string | null
   hasScreenshot: boolean
+  /** URL/path of an uploaded ticket screenshot, if any. */
+  screenshotUrl: string | null
 }
 
 /** Active browse feed, newest-first by event time. Optionally filter by
@@ -222,7 +233,7 @@ export async function createListing(
       input.ticketCount,
       input.paid,
       input.ask,
-      input.hasScreenshot ? 'pending-upload' : null,
+      input.screenshotUrl,
       input.city
     )
     .first<{ id: number }>()
@@ -245,8 +256,9 @@ export async function updateListing(
     .prepare(
       `UPDATE listings
           SET category = ?1, title = ?2, venue = ?3, event_at = ?4, seats = ?5,
-              ticket_count = ?6, paid_price = ?7, ask_price = ?8, city = ?9
-        WHERE id = ?10 AND seller_id = ?11 AND status = 'active'
+              ticket_count = ?6, paid_price = ?7, ask_price = ?8, city = ?9,
+              screenshot_url = ?10
+        WHERE id = ?11 AND seller_id = ?12 AND status = 'active'
        RETURNING id`
     )
     .bind(
@@ -259,6 +271,7 @@ export async function updateListing(
       input.paid,
       input.ask,
       input.city,
+      input.screenshotUrl,
       id,
       sellerId
     )

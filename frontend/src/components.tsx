@@ -28,7 +28,11 @@ export function TicketCard({
   return (
     <button className="ticket listing-card" onClick={onOpen}>
       <div className={`poster poster-cat-${l.category.toLowerCase()}`} aria-hidden>
-        {l.emoji}
+        {l.screenshotUrl ? (
+          <img src={l.screenshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          l.emoji
+        )}
       </div>
       <div className="listing-body">
         <div className="listing-title">{l.title}</div>

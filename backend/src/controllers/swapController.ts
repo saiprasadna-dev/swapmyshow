@@ -6,6 +6,8 @@ import {
   confirmSwap,
   markTransferred,
   confirmReceipt,
+  makeOffer,
+  acceptOffer,
   listSwapsForUser,
   listConversationsForUser,
   countUnreadForUser,
@@ -120,6 +122,60 @@ export const swapController = {
       }
       return c.json({ swap: updated.swap })
     },
+
+  /** POST /swaps/:id/offer — propose a price in chat. Either party may offer;
+      it also drops a message into the transcript so both sides see it. */
+  offer: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const swapId = parseId(c.req.param('id'))
+    if (swapId === null) return c.json({ error: 'invalid_id' }, 400)
+
+    const access = await getSwapForUser(c.env.DB, swapId, user.id)
+    if ('error' in access) {
+      return c.json({ error: access.error }, swapStatus(access.error))
+    }
+    if (access.row.step === 'done') return c.json({ error: 'swap_done' }, 400)
+
+    const body = (await c.req.json().catch(() => null)) as { price?: unknown } | null
+    const price = Math.round(Number(body?.price))
+    if (!Number.isFinite(price) || price <= 0) {
+      return c.json({ error: 'invalid_price' }, 400)
+    }
+
+    await makeOffer(c.env.DB, swapId, user.id, price)
+    await postMessage(c.env.DB, swapId, user.id, `💰 Offered ₹${price}`)
+
+    const updated = await getSwapForUser(c.env.DB, swapId, user.id)
+    if ('error' in updated) {
+      return c.json({ error: updated.error }, swapStatus(updated.error))
+    }
+    return c.json({ swap: updated.swap })
+  },
+
+  /** POST /swaps/:id/offer/accept — accept the counterparty's pending offer;
+      it becomes the agreed price. */
+  acceptOffer: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const swapId = parseId(c.req.param('id'))
+    if (swapId === null) return c.json({ error: 'invalid_id' }, 400)
+
+    const access = await getSwapForUser(c.env.DB, swapId, user.id)
+    if ('error' in access) {
+      return c.json({ error: access.error }, swapStatus(access.error))
+    }
+
+    const result = await acceptOffer(c.env.DB, access.row, user.id)
+    if ('error' in result) {
+      return c.json({ error: result.error }, result.error === 'own_offer' ? 403 : 400)
+    }
+    await postMessage(c.env.DB, swapId, user.id, `🤝 Accepted — deal at ₹${result.price}`)
+
+    const updated = await getSwapForUser(c.env.DB, swapId, user.id)
+    if ('error' in updated) {
+      return c.json({ error: updated.error }, swapStatus(updated.error))
+    }
+    return c.json({ swap: updated.swap })
+  },
 
   /** GET /me/swaps — swaps the caller has bought into (Profile → Bought). */
   mine: async (c: Context<AppEnv>) => {

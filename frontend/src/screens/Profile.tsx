@@ -9,7 +9,12 @@ import {
 } from "../apiClient";
 import { BottomNav, TicketCard, Verified } from "../components";
 import type { Screen } from "../App";
-import type { AuthUser } from "../authClient";
+import {
+  type AuthUser,
+  OtpError,
+  requestPhoneVerify,
+  verifyPhone,
+} from "../authClient";
 
 const tabs = ["Selling", "Bought", "Saved"] as const;
 
@@ -17,10 +22,12 @@ export default function Profile({
   go,
   user,
   onSignOut,
+  onUser,
 }: {
   go: (s: Screen) => void;
   user?: AuthUser | null;
   onSignOut?: () => void;
+  onUser?: (u: AuthUser) => void;
 }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Selling");
   const [selling, setSelling] = useState<Listing[]>([]);
@@ -97,6 +104,10 @@ export default function Profile({
           ★ {rating.toFixed(1)} · {swaps} {swaps === 1 ? "swap" : "swaps"}
         </p>
       </div>
+
+      {user?.phone && !user.phoneVerified && onUser && (
+        <PhoneVerify onVerified={onUser} />
+      )}
 
       <div className="tab-row" role="tablist" aria-label="My tickets">
         {tabs.map((t) => (
@@ -201,4 +212,130 @@ export default function Profile({
       <BottomNav active="profile" go={go} />
     </div>
   );
+}
+
+/** Inline phone-verification: request a code, enter it, done. On success the
+    updated user (phoneVerified = true) is lifted back up so the trust badge
+    refreshes. Shows a dev code when no SMS provider is configured. */
+function PhoneVerify({ onVerified }: { onVerified: (u: AuthUser) => void }) {
+  const [step, setStep] = useState<"idle" | "code">("idle");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [devCode, setDevCode] = useState<string>();
+
+  const request = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const { debugCode } = await requestPhoneVerify();
+      setDevCode(debugCode);
+      setStep("code");
+      setCode("");
+    } catch (err) {
+      setError(err instanceof OtpError ? phoneVerifyMessage(err.code) : "Failed. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async () => {
+    if (code.length < 6 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      onVerified(await verifyPhone(code));
+    } catch (err) {
+      setError(err instanceof OtpError ? phoneVerifyMessage(err.code) : "Failed. Try again.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className="ticket"
+      style={{ marginTop: 12, background: "var(--purple-soft)", borderColor: "var(--purple-border)" }}
+    >
+      <div className="row between" style={{ gap: 8 }}>
+        <strong style={{ fontFamily: "var(--display)", fontSize: 14 }}>
+          📱 Verify your phone
+        </strong>
+        {step === "idle" && (
+          <button className="btn btn-primary btn-small" onClick={request} disabled={busy}>
+            {busy ? "Sending…" : "Send code"}
+          </button>
+        )}
+      </div>
+      <p className="small muted" style={{ margin: "6px 0 0" }}>
+        A verified phone earns the trust badge buyers look for.
+      </p>
+
+      {step === "code" && (
+        <div style={{ marginTop: 10 }}>
+          {devCode && (
+            <div className="google-hint" style={{ marginBottom: 10 }}>
+              <strong>Dev mode</strong>
+              <span>
+                No SMS provider — your code is <code>{devCode}</code>.
+              </span>
+            </div>
+          )}
+          <div className="row" style={{ gap: 8 }}>
+            <input
+              className="input"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="123456"
+              style={{ letterSpacing: 6, fontFamily: "var(--mono)", flex: 1 }}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={(e) => e.key === "Enter" && verify()}
+            />
+            <button
+              className="btn btn-primary btn-small"
+              onClick={verify}
+              disabled={busy || code.length < 6}
+            >
+              Verify
+            </button>
+          </div>
+          <button
+            type="button"
+            className="linklike"
+            style={{ marginTop: 8 }}
+            onClick={request}
+            disabled={busy}
+          >
+            Resend code
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="small" role="alert" style={{ color: "var(--danger)", margin: "8px 0 0" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function phoneVerifyMessage(code: string): string {
+  switch (code) {
+    case "invalid_code":
+      return "That code isn't right. Check it and try again.";
+    case "code_expired":
+      return "That code expired. Request a new one.";
+    case "too_many_attempts":
+      return "Too many tries. Request a new code.";
+    case "otp_cooldown":
+      return "Please wait a bit before requesting another code.";
+    case "no_phone":
+      return "Add a phone number first.";
+    case "network":
+      return "Network error. Try again.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
 }

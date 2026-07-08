@@ -17,8 +17,10 @@ import {
   createProfileUser,
   setUserPhone,
   setUserPassword,
+  markPhoneVerified,
   toPublicUser,
 } from '../services/userRepo'
+import { sendSms } from '../services/sms'
 import {
   normalizeEmail,
   isValidEmail,
@@ -401,6 +403,55 @@ export const authController = {
 
     const updated = await setUserPhone(c.env.DB, principal.id, phone)
     if (!updated) return c.json({ error: 'phone_taken' }, 409)
+    return c.json({ user: toPublicUser(updated) })
+  },
+
+  /** POST /auth/phone/verify/request — text the signed-in user a code to prove
+      the phone on their account. Reuses the email-OTP machinery keyed by the
+      phone number; falls back to a dev debugCode when no SMS provider. */
+  requestPhoneVerify: async (c: Context<AppEnv>) => {
+    const principal = c.get('user')
+    const row = await getUserById(c.env.DB, principal.id)
+    if (!row) return c.json({ error: 'unauthorized' }, 401)
+    if (!row.phone) return c.json({ error: 'no_phone' }, 400)
+    if (row.phone_verified === 1) return c.json({ ok: true, alreadyVerified: true })
+
+    const otpConfig = getOtpConfig(c.env)
+    const result = await issueOtp(c.env.DB, row.phone, otpConfig)
+    if (!result.ok) {
+      c.header('Retry-After', String(result.retryAfterSeconds))
+      return c.json(
+        { error: 'otp_cooldown', retryAfterSeconds: result.retryAfterSeconds },
+        429
+      )
+    }
+
+    const { delivered } = await sendSms({
+      to: row.phone,
+      text: `Your SwapMyShow verification code is ${result.code}`,
+    })
+    const devMode =
+      !delivered && (c.env.ENVIRONMENT ?? 'development') === 'development'
+    return c.json({ ok: true, ...(devMode ? { debugCode: result.code } : {}) })
+  },
+
+  /** POST /auth/phone/verify — check the texted code and mark the phone
+      verified. */
+  verifyPhone: async (c: Context<AppEnv>) => {
+    const principal = c.get('user')
+    const row = await getUserById(c.env.DB, principal.id)
+    if (!row) return c.json({ error: 'unauthorized' }, 401)
+    if (!row.phone) return c.json({ error: 'no_phone' }, 400)
+
+    const body = (await c.req.json().catch(() => null)) as { code?: unknown } | null
+    const code = typeof body?.code === 'string' ? body.code.trim() : ''
+    if (!code) return c.json({ error: 'missing_code' }, 400)
+
+    const otpConfig = getOtpConfig(c.env)
+    const result = await checkOtp(c.env.DB, row.phone, code, otpConfig)
+    if (!result.ok) return c.json({ error: result.reason }, 401)
+
+    const updated = (await markPhoneVerified(c.env.DB, principal.id)) ?? row
     return c.json({ user: toPublicUser(updated) })
   },
 

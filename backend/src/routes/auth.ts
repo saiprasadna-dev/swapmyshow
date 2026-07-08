@@ -23,6 +23,10 @@ app.post('/password/reset', authController.resetPassword)
 // Attach a phone number to the signed-in account (one-time).
 app.post('/phone', requireAuth, authController.setPhone)
 
+// Verify the phone on the signed-in account: request a code, then submit it.
+app.post('/phone/verify/request', requireAuth, authController.requestPhoneVerify)
+app.post('/phone/verify', requireAuth, authController.verifyPhone)
+
 // Return the currently authenticated user.
 app.get('/me', requireAuth, authController.me)
 

@@ -35,6 +35,11 @@ This directory contains the Cloudflare Workers backend for the SwapMyShow applic
 - `POST /auth/password/reset` - `{ email, code, password }` — verify the code and
   set a new password; signs the user in on success
 - `POST /auth/phone` *(auth)* - attach a phone to the signed-in account (one-time)
+- `POST /auth/phone/verify/request` *(auth)* - text the caller a code to verify
+  their phone (falls back to a dev `debugCode` — no SMS provider is wired up yet;
+  see `services/sms.ts`)
+- `POST /auth/phone/verify` *(auth)* - `{ code }` — verify the code and set
+  `phone_verified`
 - `GET /auth/me` - return the user for a `Authorization: Bearer <session>` token
 
 Sign-up verifies the email with a one-time code; after that, every sign-in uses the
@@ -51,6 +56,15 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `DELETE /listings/:id` *(auth)* - soft-cancel a listing the caller owns
   (`status → expired`, drops it out of the browse feed)
 - `POST /listings/:id/save` *(auth)* - toggle the listing in the caller's saved set
+
+### Uploads (ticket images)
+
+- `POST /uploads` *(auth)* - store an image (raw body + `Content-Type`) in R2 and
+  return `{ url }`. Fails closed with `503 uploads_unavailable` until an R2
+  bucket is bound (see the commented `r2_buckets` block in `wrangler.jsonc`:
+  `wrangler r2 bucket create swapmyshow-uploads`, uncomment, redeploy).
+- `GET /uploads/:key` - stream an uploaded image back (public, cached). A
+  listing's `screenshotUrl` points here.
 - `GET /me/listings` *(auth)* - the caller's own listings (Profile → Selling)
 - `GET /me/saved` *(auth)* - the caller's saved listings (Profile → Saved)
 
@@ -62,6 +76,10 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `POST /swaps/:id/messages` *(auth)* - send a chat message
 - `POST /swaps/:id/read` *(auth)* - mark this swap's chat read for the caller
   (clears its unread count)
+- `POST /swaps/:id/offer` *(auth)* - propose a price in chat (`{ price }`); posts
+  it into the transcript. Either party may offer.
+- `POST /swaps/:id/offer/accept` *(auth)* - accept the counterparty's pending
+  offer; it becomes the agreed price
 - `POST /swaps/:id/confirm` *(auth)* - advance `agree → transfer`
 - `POST /swaps/:id/transfer` *(auth)* - seller marks the ticket transferred
 - `POST /swaps/:id/receipt` *(auth)* - buyer confirms receipt; finalizes the swap
