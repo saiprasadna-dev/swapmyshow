@@ -231,3 +231,56 @@ export async function createListing(
   if (!listing) throw new Error('listing vanished after insert')
   return listing
 }
+
+/** Overwrite an active listing owned by `sellerId`. The WHERE guard makes this
+    a no-op (returns null) if the row is missing, not theirs, or no longer
+    active — so a sold/expired listing can't be silently edited. */
+export async function updateListing(
+  db: D1Database,
+  id: number,
+  sellerId: number,
+  input: ListingInput
+): Promise<PublicListing | null> {
+  const row = await db
+    .prepare(
+      `UPDATE listings
+          SET category = ?1, title = ?2, venue = ?3, event_at = ?4, seats = ?5,
+              ticket_count = ?6, paid_price = ?7, ask_price = ?8, city = ?9
+        WHERE id = ?10 AND seller_id = ?11 AND status = 'active'
+       RETURNING id`
+    )
+    .bind(
+      input.category,
+      input.title,
+      input.venue,
+      input.eventAt,
+      input.seats.join(','),
+      input.ticketCount,
+      input.paid,
+      input.ask,
+      input.city,
+      id,
+      sellerId
+    )
+    .first<{ id: number }>()
+  if (!row) return null
+  return getListingById(db, id)
+}
+
+/** Soft-cancel an active listing owned by `sellerId` (status → 'expired'), so
+    it drops out of the browse feed. Returns false if nothing was cancelled. */
+export async function cancelListing(
+  db: D1Database,
+  id: number,
+  sellerId: number
+): Promise<boolean> {
+  const row = await db
+    .prepare(
+      `UPDATE listings SET status = 'expired'
+        WHERE id = ?1 AND seller_id = ?2 AND status = 'active'
+       RETURNING id`
+    )
+    .bind(id, sellerId)
+    .first<{ id: number }>()
+  return row !== null
+}

@@ -1,51 +1,96 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Category } from "../data";
-import { createListing, ApiError } from "../apiClient";
+import {
+  createListing,
+  updateListing,
+  fetchListing,
+  ApiError,
+} from "../apiClient";
 import { BottomNav } from "../components";
 import type { Screen } from "../App";
 
-const cats: Category[] = ["Movies", "Concerts", "Sports", "Travel"];
+const cats: Category[] = ["Movies", "Concerts", "Sports", "Events", "Travel"];
 
-export default function PostTicket({ go }: { go: (s: Screen) => void }) {
+/** ISO datetime → the value a <input type="datetime-local"> expects
+    ("YYYY-MM-DDTHH:mm" in local time). Empty string if unparseable. */
+const toLocalInput = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
+
+export default function PostTicket({
+  go,
+  editId,
+}: {
+  go: (s: Screen) => void;
+  editId?: number;
+}) {
+  const editing = typeof editId === "number";
   const [cat, setCat] = useState<Category>("Movies");
   const [event, setEvent] = useState("");
-  const [date, setDate] = useState("");
+  const [venue, setVenue] = useState("");
+  const [city, setCity] = useState("");
+  const [when, setWhen] = useState(""); // datetime-local string
   const [seats, setSeats] = useState("");
   const [paid, setPaid] = useState("");
   const [ask, setAsk] = useState("");
   const [uploaded, setUploaded] = useState(false);
   const [posted, setPosted] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(editing);
   const [error, setError] = useState<string | null>(null);
 
-  const ready = event && ask;
+  // Edit mode: load the existing listing and prefill the form.
+  useEffect(() => {
+    if (!editing) return;
+    let active = true;
+    fetchListing(editId)
+      .then((l) => {
+        if (!active) return;
+        setCat(l.category);
+        setEvent(l.title);
+        setVenue(l.venue ?? "");
+        setCity(l.city ?? "");
+        setWhen(toLocalInput(l.eventAt));
+        setSeats(l.seats.join(", "));
+        setPaid(String(l.paid));
+        setAsk(String(l.price));
+      })
+      .catch(() => active && setError("load_failed"))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [editing, editId]);
 
-  // Turn the free-text date field into an ISO datetime. Falls back to a
-  // near-future time so a quick "Tonight 9:30" still lands as a valid event.
-  const toEventAt = (raw: string): string => {
-    const parsed = raw ? Date.parse(raw) : NaN;
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
-    const soon = new Date(Date.now() + 2 * 60 * 60 * 1000);
-    return soon.toISOString();
-  };
+  const whenValid = when !== "" && !Number.isNaN(new Date(when).getTime());
+  const ready = event.trim() !== "" && ask !== "" && whenValid;
 
-  const post = async () => {
+  const submit = async () => {
     if (!ready || busy) return;
     setBusy(true);
     setError(null);
     const seatList = seats.split(/[,\s–-]+/).map((s) => s.trim()).filter(Boolean);
+    const payload = {
+      category: cat,
+      title: event.trim(),
+      venue: venue.trim(),
+      city: city.trim() || undefined,
+      eventAt: new Date(when).toISOString(),
+      seats: seatList,
+      ticketCount: Math.max(1, seatList.length),
+      paid: Number(paid.replace(/[^\d]/g, "")) || Number(ask.replace(/[^\d]/g, "")),
+      ask: Number(ask.replace(/[^\d]/g, "")),
+      hasScreenshot: uploaded,
+    };
     try {
-      const listing = await createListing({
-        category: cat,
-        title: event.trim(),
-        venue: "",
-        eventAt: toEventAt(date),
-        seats: seatList,
-        ticketCount: Math.max(1, seatList.length),
-        paid: Number(paid.replace(/[^\d]/g, "")) || Number(ask.replace(/[^\d]/g, "")),
-        ask: Number(ask.replace(/[^\d]/g, "")),
-        hasScreenshot: uploaded,
-      });
+      const listing = editing
+        ? await updateListing(editId, payload)
+        : await createListing(payload);
       setPosted(listing.id);
     } catch (e) {
       setError(e instanceof ApiError ? e.code : "post_failed");
@@ -53,10 +98,24 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="screen">
+        <header className="top">
+          <h2>Edit listing</h2>
+        </header>
+        <p className="small muted" style={{ textAlign: "center", marginTop: 40 }}>
+          Loading…
+        </p>
+        <BottomNav active="post" go={go} />
+      </div>
+    );
+  }
+
   return (
     <div className="screen">
       <header className="top">
-        <h2>Post a ticket</h2>
+        <h2>{editing ? "Edit listing" : "Post a ticket"}</h2>
       </header>
 
       <div className="chip-row" aria-label="Category">
@@ -76,30 +135,51 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
           <label htmlFor="event">Event</label>
           <input
             id="event"
-            placeholder="Dune: Part Two — PVR Nexus"
+            placeholder="Dune: Part Two"
             value={event}
             onChange={(e) => setEvent(e.target.value)}
           />
         </div>
+
+        <div className="field">
+          <label htmlFor="venue">Venue</label>
+          <input
+            id="venue"
+            placeholder="PVR Nexus, Koramangala"
+            value={venue}
+            onChange={(e) => setVenue(e.target.value)}
+          />
+        </div>
+
         <div className="row" style={{ gap: 10 }}>
           <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="date">Date</label>
+            <label htmlFor="city">City</label>
             <input
-              id="date"
-              placeholder="Tonight 9:30"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              id="city"
+              placeholder="Bengaluru"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
             />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="seats">Seats</label>
             <input
               id="seats"
-              placeholder="G12–G13"
+              placeholder="G12, G13"
               value={seats}
               onChange={(e) => setSeats(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="when">Date &amp; time</label>
+          <input
+            id="when"
+            type="datetime-local"
+            value={when}
+            onChange={(e) => setWhen(e.target.value)}
+          />
         </div>
 
         <button
@@ -140,9 +220,13 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
       <div style={{ marginTop: "auto", paddingTop: 18 }}>
         {posted !== null ? (
           <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "rgba(14,159,110,.3)" }}>
-            <strong style={{ color: "var(--trust)" }}>✓ Listing posted</strong>
+            <strong style={{ color: "var(--trust)" }}>
+              {editing ? "✓ Listing updated" : "✓ Listing posted"}
+            </strong>
             <p className="small muted" style={{ margin: "4px 0 10px" }}>
-              Buyers nearby can now chat with you.
+              {editing
+                ? "Your changes are live."
+                : "Buyers nearby can now chat with you."}
             </p>
             <button
               className="btn btn-outline btn-small"
@@ -156,16 +240,22 @@ export default function PostTicket({ go }: { go: (s: Screen) => void }) {
           <>
             {error && (
               <p className="small" style={{ color: "var(--danger, #c0392b)", textAlign: "center", marginBottom: 8 }}>
-                Couldn't post — check the details and try again.
+                {error === "not_editable"
+                  ? "This listing can no longer be edited."
+                  : "Couldn't save — check the details and try again."}
               </p>
             )}
             <button
               className="btn btn-primary"
               disabled={!ready || busy}
               style={!ready || busy ? { opacity: 0.5 } : undefined}
-              onClick={post}
+              onClick={submit}
             >
-              {busy ? "Posting…" : "Post listing"}
+              {busy
+                ? "Saving…"
+                : editing
+                  ? "Save changes"
+                  : "Post listing"}
             </button>
           </>
         )}

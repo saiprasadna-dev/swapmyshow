@@ -4,6 +4,7 @@ import {
   fetchMyListings,
   fetchSavedListings,
   fetchMySwaps,
+  cancelListing,
   type SwapView,
 } from "../apiClient";
 import { BottomNav, TicketCard, Verified } from "../components";
@@ -35,6 +36,20 @@ export default function Profile({
       active = false;
     };
   }, []);
+
+  // Remove (soft-cancel) one of my listings after confirmation.
+  const removeListing = async (id: number) => {
+    if (!window.confirm("Remove this listing? Buyers will no longer see it.")) {
+      return;
+    }
+    const prev = selling;
+    setSelling((ls) => ls.filter((l) => l.id !== id)); // optimistic
+    try {
+      await cancelListing(id);
+    } catch {
+      setSelling(prev); // restore on failure
+    }
+  };
 
   const name = user?.name ?? "You";
   const rating = user?.rating ?? 0;
@@ -101,13 +116,32 @@ export default function Profile({
       <div className="stack">
         {tab === "Selling" &&
           selling.map((l) => (
-            <TicketCard
-              key={l.id}
-              listing={l}
-              onOpen={
-                l.status === "sold" ? undefined : () => go({ name: "listing", id: l.id })
-              }
-            />
+            <div key={l.id} style={{ display: "grid", gap: 8 }}>
+              <TicketCard
+                listing={l}
+                onOpen={
+                  l.status === "sold" ? undefined : () => go({ name: "listing", id: l.id })
+                }
+              />
+              {l.status !== "sold" && (
+                <div className="row" style={{ gap: 8 }}>
+                  <button
+                    className="btn btn-outline btn-small"
+                    style={{ flex: 1 }}
+                    onClick={() => go({ name: "post", editId: l.id })}
+                  >
+                    ✎ Edit
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-small"
+                    style={{ flex: 1, color: "var(--danger)" }}
+                    onClick={() => removeListing(l.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         {tab === "Bought" &&
           bought.map((s) => (

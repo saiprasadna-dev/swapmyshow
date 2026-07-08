@@ -7,6 +7,8 @@ import {
   listSavedListings,
   toggleSaved,
   createListing,
+  updateListing,
+  cancelListing,
   isCategory,
   type Category,
 } from '../services/listingRepo'
@@ -105,6 +107,48 @@ export const listingController = {
 
     const listing = await createListing(c.env.DB, user.id, parsed)
     return c.json({ listing }, 201)
+  },
+
+  /** PATCH /listings/:id — edit a listing the caller owns and that's still
+      active. Same validation as create; refuses sold/expired listings. */
+  update: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const id = Number(c.req.param('id'))
+    if (!Number.isInteger(id)) return c.json({ error: 'invalid_id' }, 400)
+
+    const existing = await getListingById(c.env.DB, id)
+    if (!existing) return c.json({ error: 'not_found' }, 404)
+    if (existing.sellerId !== user.id) return c.json({ error: 'forbidden' }, 403)
+    if (existing.status !== 'active') {
+      return c.json({ error: 'not_editable' }, 409)
+    }
+
+    const body = (await c.req.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null
+    const parsed = parseListingBody(body)
+    if ('error' in parsed) return c.json({ error: parsed.error }, 400)
+
+    const listing = await updateListing(c.env.DB, id, user.id, parsed)
+    if (!listing) return c.json({ error: 'not_editable' }, 409)
+    return c.json({ listing })
+  },
+
+  /** DELETE /listings/:id — soft-cancel a listing the caller owns (drops it out
+      of the browse feed). Only active listings can be cancelled. */
+  remove: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const id = Number(c.req.param('id'))
+    if (!Number.isInteger(id)) return c.json({ error: 'invalid_id' }, 400)
+
+    const existing = await getListingById(c.env.DB, id)
+    if (!existing) return c.json({ error: 'not_found' }, 404)
+    if (existing.sellerId !== user.id) return c.json({ error: 'forbidden' }, 403)
+
+    const cancelled = await cancelListing(c.env.DB, id, user.id)
+    if (!cancelled) return c.json({ error: 'not_cancellable' }, 409)
+    return c.json({ ok: true })
   },
 
   /** GET /me/listings — the caller's own listings (Profile → Selling). */

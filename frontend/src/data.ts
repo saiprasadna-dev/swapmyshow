@@ -19,6 +19,7 @@ export interface Listing {
   sellerId: number;
   title: string;
   venue: string;
+  city?: string;
   eventAt: string; // ISO datetime from the backend
   when: string; // derived human label: "Tonight 9:30 PM"
   timeBucket: "tonight" | "tomorrow" | "weekend";

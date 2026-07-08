@@ -86,14 +86,17 @@ export default function ListingDetail({
         <div style={{ padding: 14 }}>
           <h2>{l.title}</h2>
           <p className="muted small" style={{ margin: "4px 0 10px" }}>
-            {l.venue} · {l.when}
+            {[l.venue, l.city, l.when].filter(Boolean).join(" · ") || l.when}
           </p>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            {l.seats.length > 0 && (
+              <span className="badge badge-plain">
+                Seats <span className="seat-code">{l.seats.join("–")}</span>
+              </span>
+            )}
             <span className="badge badge-plain">
-              Seats <span className="seat-code">{l.seats.join("–")}</span>
-            </span>
-            <span className="badge badge-plain">
-              {l.seats.length} ticket{l.seats.length > 1 ? "s" : ""}
+              {Math.max(l.seats.length, 1)} ticket
+              {Math.max(l.seats.length, 1) > 1 ? "s" : ""}
             </span>
             {l.seller.verified && <Verified label="Verified seller" />}
           </div>

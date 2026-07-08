@@ -32,7 +32,7 @@ export function TicketCard({
       <div className="listing-body">
         <div className="listing-title">{l.title}</div>
         <div className="listing-meta">
-          {l.venue} · {l.when}
+          {(l.venue || "Venue TBA")} · {l.when}
           {l.seats.length > 0 && (
             <>
               {" · "}
