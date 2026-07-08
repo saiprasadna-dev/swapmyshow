@@ -46,6 +46,10 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `GET /listings?category=` - public browse feed of active listings (with seller)
 - `GET /listings/:id` - public listing detail
 - `POST /listings` *(auth)* - create a listing owned by the caller
+- `PATCH /listings/:id` *(auth)* - edit a listing the caller owns (must still be
+  `active`; returns `not_editable` for a sold/expired one)
+- `DELETE /listings/:id` *(auth)* - soft-cancel a listing the caller owns
+  (`status → expired`, drops it out of the browse feed)
 - `POST /listings/:id/save` *(auth)* - toggle the listing in the caller's saved set
 - `GET /me/listings` *(auth)* - the caller's own listings (Profile → Selling)
 - `GET /me/saved` *(auth)* - the caller's saved listings (Profile → Saved)

@@ -132,6 +132,7 @@ const toListing = (l: ApiListing): Listing => {
     sellerId: l.sellerId,
     title: l.title,
     venue: l.venue ?? "",
+    city: l.city ?? "",
     eventAt: l.eventAt,
     when: whenLabel(l.eventAt),
     timeBucket: timeBucketFor(l.eventAt),
@@ -226,6 +227,23 @@ export async function createListing(input: NewListing): Promise<Listing> {
     body: JSON.stringify({ ...input, category: toApiCategory(input.category) }),
   });
   return toListing(data.listing);
+}
+
+/** Edit an active listing the caller owns. */
+export async function updateListing(
+  id: number,
+  input: NewListing
+): Promise<Listing> {
+  const data = await api<{ listing: ApiListing }>(`/listings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...input, category: toApiCategory(input.category) }),
+  });
+  return toListing(data.listing);
+}
+
+/** Cancel (soft-delete) a listing the caller owns. */
+export async function cancelListing(id: number): Promise<void> {
+  await api(`/listings/${id}`, { method: "DELETE" });
 }
 
 export async function fetchMyListings(): Promise<Listing[]> {

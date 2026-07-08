@@ -17,7 +17,7 @@ export type Screen =
   | { name: "addphone" }
   | { name: "home" }
   | { name: "search" }
-  | { name: "post" }
+  | { name: "post"; editId?: number }
   | { name: "messages" }
   | { name: "profile" }
   | { name: "listing"; id: number }
@@ -79,7 +79,7 @@ function App() {
       )}
       {screen.name === "home" && <Home go={go} />}
       {screen.name === "search" && <Search go={go} />}
-      {screen.name === "post" && <PostTicket go={go} />}
+      {screen.name === "post" && <PostTicket go={go} editId={screen.editId} />}
       {screen.name === "messages" && <Messages go={go} />}
       {screen.name === "profile" && (
         <Profile go={go} user={user} onSignOut={handleSignOut} />

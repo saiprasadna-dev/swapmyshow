@@ -10,8 +10,10 @@ const app = new Hono<AppEnv>()
 app.get('/', listingController.list)
 app.get('/:id', listingController.get)
 
-// Authenticated: create a listing, start a swap on one.
+// Authenticated: create / edit / cancel a listing, start a swap on one.
 app.post('/', requireAuth, listingController.create)
+app.patch('/:id', requireAuth, listingController.update)
+app.delete('/:id', requireAuth, listingController.remove)
 app.post('/:id/swap', requireAuth, swapController.start)
 app.post('/:id/save', requireAuth, listingController.toggleSave)
 
