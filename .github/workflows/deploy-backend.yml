@@ -1,0 +1,41 @@
+name: Deploy backend
+
+# Deploy the Cloudflare Worker whenever backend code lands on main.
+# `npm run deploy` applies any pending D1 migrations and then deploys, so the
+# database is always brought up to date before the new code goes live.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {} # allows manual runs from the Actions tab
+
+# Never let two deploys run at once.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      # migrate (remote) + wrangler deploy. Auth comes from the API token.
+      - name: Apply migrations and deploy
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
