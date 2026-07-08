@@ -77,6 +77,7 @@ interface ApiConversation extends ApiSwap {
   counterpartyName: string;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  unreadCount: number;
 }
 
 interface ApiMessage {
@@ -106,6 +107,7 @@ export interface ConversationView extends SwapView {
   counterpartyName: string;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  unreadCount: number;
 }
 
 export interface ChatMessage {
@@ -166,6 +168,7 @@ const toConversation = (c: ApiConversation): ConversationView => ({
   counterpartyName: c.counterpartyName,
   lastMessage: c.lastMessage,
   lastMessageAt: c.lastMessageAt,
+  unreadCount: c.unreadCount,
 });
 
 /* ---------- fetch helper ---------- */
@@ -289,6 +292,17 @@ export async function fetchConversations(): Promise<ConversationView[]> {
     `/me/conversations`
   );
   return data.conversations.map(toConversation);
+}
+
+/** Total unread messages across the caller's chats (for the nav badge). */
+export async function fetchUnreadCount(): Promise<number> {
+  const data = await api<{ count: number }>(`/me/unread`);
+  return data.count ?? 0;
+}
+
+/** Mark a swap's chat as read for the caller (clears its unread). */
+export async function markSwapRead(swapId: number): Promise<void> {
+  await api(`/swaps/${swapId}/read`, { method: "POST" });
 }
 
 export async function fetchMessages(

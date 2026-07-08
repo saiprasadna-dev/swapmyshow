@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchMe, signOut, type AuthUser } from "./authClient";
+import { fetchUnreadCount } from "./apiClient";
+import { UnreadContext } from "./unread";
 import SignUp from "./screens/SignUp";
 import AddPhone from "./screens/AddPhone";
 import Home from "./screens/Home";
@@ -60,10 +62,30 @@ function App() {
   const handleSignOut = () => {
     signOut();
     setUser(null);
+    setUnread(0);
     go({ name: "signup" });
   };
 
+  // Keep the Messages unread badge fresh while signed in: refresh on every
+  // screen change (so it clears right after you read a chat) and poll gently.
+  const [unread, setUnread] = useState(0);
+  const refreshUnread = useCallback(() => {
+    fetchUnreadCount()
+      .then(setUnread)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!user) {
+      setUnread(0);
+      return;
+    }
+    refreshUnread();
+    const timer = setInterval(refreshUnread, 15000);
+    return () => clearInterval(timer);
+  }, [user, screen, refreshUnread]);
+
   return (
+    <UnreadContext.Provider value={unread}>
     <div className="phone">
       {screen.name === "signup" && (
         <SignUp onDone={() => go({ name: "home" })} onUser={afterAuth} />
@@ -93,6 +115,7 @@ function App() {
       )}
       {screen.name === "rate" && <Rate swapId={screen.swapId} go={go} />}
     </div>
+    </UnreadContext.Provider>
   );
 }
 

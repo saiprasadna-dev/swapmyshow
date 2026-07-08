@@ -232,12 +232,15 @@ export type PublicConversation = PublicSwap & {
   /** Body of the latest message, or null if no one has written yet. */
   lastMessage: string | null
   lastMessageAt: string | null
+  /** Messages from the counterparty the caller hasn't read yet. */
+  unreadCount: number
 }
 
 type ConversationRow = SwapRow & {
   buyer_name: string
   last_body: string | null
   last_at: string | null
+  unread_count: number
 }
 
 /**
@@ -256,7 +259,13 @@ export async function listConversationsForUser(
               (SELECT m.body FROM messages m WHERE m.swap_id = s.id
                  ORDER BY m.id DESC LIMIT 1) AS last_body,
               (SELECT m.created_at FROM messages m WHERE m.swap_id = s.id
-                 ORDER BY m.id DESC LIMIT 1) AS last_at
+                 ORDER BY m.id DESC LIMIT 1) AS last_at,
+              (SELECT COUNT(*) FROM messages m
+                 WHERE m.swap_id = s.id AND m.sender_id != ?1
+                   AND m.id > COALESCE(
+                     (SELECT r.last_read_message_id FROM swap_reads r
+                        WHERE r.swap_id = s.id AND r.user_id = ?1), 0)
+              ) AS unread_count
          FROM swaps s
          JOIN listings l ON l.id = s.listing_id
          JOIN users b ON b.id = s.buyer_id
@@ -282,7 +291,52 @@ export async function listConversationsForUser(
       counterpartyName,
       lastMessage: row.last_body ?? null,
       lastMessageAt: row.last_at ?? null,
+      unreadCount: row.unread_count ?? 0,
     })
   }
   return conversations
+}
+
+/** Total unread messages across every conversation the user is in (the number
+    behind the Messages nav badge). Cheap single-row aggregate. */
+export async function countUnreadForUser(
+  db: D1Database,
+  userId: number
+): Promise<number> {
+  const row = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+         FROM messages m
+         JOIN swaps s ON s.id = m.swap_id
+         JOIN listings l ON l.id = s.listing_id
+        WHERE m.sender_id != ?1
+          AND (s.buyer_id = ?1 OR l.seller_id = ?1)
+          AND m.id > COALESCE(
+            (SELECT r.last_read_message_id FROM swap_reads r
+               WHERE r.swap_id = s.id AND r.user_id = ?1), 0)`
+    )
+    .bind(userId)
+    .first<{ count: number }>()
+  return row?.count ?? 0
+}
+
+/** Mark every message in a swap as read for this user (up to the latest id).
+    Idempotent upsert into swap_reads. Caller must have verified access. */
+export async function markSwapRead(
+  db: D1Database,
+  swapId: number,
+  userId: number
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO swap_reads (swap_id, user_id, last_read_message_id, updated_at)
+       VALUES (?1, ?2,
+               (SELECT COALESCE(MAX(id), 0) FROM messages WHERE swap_id = ?1),
+               CURRENT_TIMESTAMP)
+       ON CONFLICT(swap_id, user_id) DO UPDATE SET
+         last_read_message_id = excluded.last_read_message_id,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .bind(swapId, userId)
+    .run()
 }

@@ -5,6 +5,7 @@ import {
   fetchMessages,
   sendMessage,
   advanceSwap,
+  markSwapRead,
   type SwapView,
   type ChatMessage,
 } from "../apiClient";
@@ -64,6 +65,12 @@ export default function Chat({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, swap]);
+
+  // Viewing the chat marks it read (clears its unread badge). Runs on open and
+  // whenever new messages arrive while it's on screen.
+  useEffect(() => {
+    markSwapRead(swapId).catch(() => {});
+  }, [swapId, messages.length]);
 
   const send = async (text: string) => {
     const body = text.trim();

@@ -8,6 +8,8 @@ import {
   confirmReceipt,
   listSwapsForUser,
   listConversationsForUser,
+  countUnreadForUser,
+  markSwapRead,
   type SwapError,
 } from '../services/swapRepo'
 import { listMessages, postMessage } from '../services/messageRepo'
@@ -132,6 +134,28 @@ export const swapController = {
     const user = c.get('user')
     const conversations = await listConversationsForUser(c.env.DB, user.id)
     return c.json({ conversations })
+  },
+
+  /** GET /me/unread — total unread messages across the caller's chats (the
+      number behind the Messages nav badge). */
+  unread: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const count = await countUnreadForUser(c.env.DB, user.id)
+    return c.json({ count })
+  },
+
+  /** POST /swaps/:id/read — mark this swap's chat as read for the caller. */
+  markRead: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const swapId = parseId(c.req.param('id'))
+    if (swapId === null) return c.json({ error: 'invalid_id' }, 400)
+
+    const access = await getSwapForUser(c.env.DB, swapId, user.id)
+    if ('error' in access) {
+      return c.json({ error: access.error }, swapStatus(access.error))
+    }
+    await markSwapRead(c.env.DB, swapId, user.id)
+    return c.json({ ok: true })
   },
 
   /** POST /swaps/:id/rate — rate the counterparty once. */
