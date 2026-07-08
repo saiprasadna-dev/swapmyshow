@@ -77,7 +77,7 @@ export default function Chat({
     }
   };
 
-  const advance = async (action: "confirm" | "receipt") => {
+  const advance = async (action: "confirm" | "transfer" | "receipt") => {
     try {
       const updated = await advanceSwap(swapId, action);
       setSwap(updated);
@@ -98,21 +98,26 @@ export default function Chat({
   }
 
   const l = swap.listing;
-  const other = swap.listing.seller;
-  const first = other.name.split(" ")[0];
+  // Show the *counterparty*: the buyer sees the seller, the seller sees the buyer.
+  const isSeller = swap.role === "seller";
+  const otherName = isSeller
+    ? swap.buyerName || "Buyer"
+    : swap.listing.seller.name;
+  const otherVerified = isSeller ? false : swap.listing.seller.verified;
+  const first = otherName.split(" ")[0];
   const total = swap.agreedPrice;
   const confirmed = swap.step !== "agree";
 
   return (
     <div className="screen no-nav">
       <header className="top" style={{ marginBottom: 10 }}>
-        <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "listing", id: l.id })}>
+        <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "messages" })}>
           ←
         </button>
         <div style={{ flex: 1 }}>
           <div className="row" style={{ gap: 6 }}>
-            <h3>{other.name}</h3>
-            {other.verified && <Verified />}
+            <h3>{otherName}</h3>
+            {otherVerified && <Verified />}
           </div>
           <div className="small muted">
             {l.title} · {l.when}
@@ -152,7 +157,8 @@ export default function Chat({
           )}
         </div>
 
-        {confirmed && (
+        {/* Buyer's step 2: confirm they received the ticket. */}
+        {confirmed && !isSeller && (
           <div className="ticket" style={{ alignSelf: "stretch" }}>
             <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
               STEP 2 · CONFIRM RECEIPT
@@ -172,6 +178,31 @@ export default function Chat({
                 Not yet
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Seller's step 2: send the ticket, then mark it transferred. */}
+        {confirmed && isSeller && (
+          <div className="ticket" style={{ alignSelf: "stretch" }}>
+            <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
+              STEP 2 · TRANSFER TICKET
+            </div>
+            <p className="small" style={{ margin: "4px 0 10px" }}>
+              Send the e-ticket to {first} in chat, then mark it transferred.
+            </p>
+            {swap.sellerMarkedTransferred ? (
+              <div className="badge badge-trust" style={{ width: "100%", justifyContent: "center", padding: "8px 0" }}>
+                ✓ Marked as transferred
+              </div>
+            ) : (
+              <button
+                className="btn btn-primary btn-small"
+                style={{ width: "100%" }}
+                onClick={() => advance("transfer")}
+              >
+                ✓ Mark as transferred
+              </button>
+            )}
           </div>
         )}
 

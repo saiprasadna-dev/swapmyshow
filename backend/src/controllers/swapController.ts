@@ -7,6 +7,7 @@ import {
   markTransferred,
   confirmReceipt,
   listSwapsForUser,
+  listConversationsForUser,
   type SwapError,
 } from '../services/swapRepo'
 import { listMessages, postMessage } from '../services/messageRepo'
@@ -123,6 +124,14 @@ export const swapController = {
     const user = c.get('user')
     const swaps = await listSwapsForUser(c.env.DB, user.id)
     return c.json({ swaps })
+  },
+
+  /** GET /me/conversations — every chat the caller is in, as buyer or seller
+      (Messages inbox). Lets a seller see and reply to buyers who messaged. */
+  conversations: async (c: Context<AppEnv>) => {
+    const user = c.get('user')
+    const conversations = await listConversationsForUser(c.env.DB, user.id)
+    return c.json({ conversations })
   },
 
   /** POST /swaps/:id/rate — rate the counterparty once. */
