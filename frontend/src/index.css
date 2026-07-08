@@ -64,6 +64,8 @@
 body {
   margin: 0;
   background: var(--bg);
+  /* never let a stray wide child cause a horizontal scrollbar */
+  overflow-x: clip;
 }
 button {
   font: inherit;
@@ -110,20 +112,33 @@ textarea {
 :root {
   --sidebar-w: 250px;
   --content-max: 780px;
+  --tablet-col: 620px;
 }
-@media (min-width: 760px) {
-  /* centre the content column beside the sidebar, capped for reading */
+
+/* --- tablet / large-phone (600–899px): keep the app-style bottom nav but
+   centre everything in a single readable column, framed like an app --- */
+@media (min-width: 600px) {
+  .screen:has(.bottom-nav) {
+    max-width: var(--tablet-col);
+    margin-inline: auto;
+    padding: 28px 24px 116px;
+  }
+  /* screens without a nav (signup, chat, listing…) centre a bit narrower */
+  .screen:not(:has(.bottom-nav)) {
+    max-width: 540px;
+    margin-inline: auto;
+    padding: 40px 28px 48px;
+  }
+}
+
+/* --- laptop / desktop / web (≥900px): nav becomes a fixed left sidebar and
+   the content column sits beside it, centred on very wide screens --- */
+@media (min-width: 900px) {
   .screen:has(.bottom-nav) {
     max-width: var(--content-max);
     margin-left: max(var(--sidebar-w), calc((100% - var(--content-max)) / 2));
     margin-right: auto;
-    padding: 34px 30px 52px;
-  }
-  /* screens without a nav (signup, chat, listing…) just centre */
-  .screen:not(:has(.bottom-nav)) {
-    max-width: 520px;
-    margin-inline: auto;
-    padding: 40px 28px 48px;
+    padding: 36px 32px 56px;
   }
 }
 .screen {
@@ -701,8 +716,18 @@ input[type="range"] {
 .bottom-nav .nav-post span:last-child {
   color: var(--brand);
 }
+/* tablet tier: centre the bar under the app column and frame its sides */
+@media (min-width: 600px) {
+  .bottom-nav {
+    max-width: var(--tablet-col);
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+  }
+}
 /* on wide screens the bottom bar becomes a fixed left sidebar */
-@media (min-width: 760px) {
+@media (min-width: 900px) {
   .bottom-nav {
     position: fixed;
     top: 0;
@@ -712,6 +737,7 @@ input[type="range"] {
     transform: none;
     width: var(--sidebar-w);
     max-width: var(--sidebar-w);
+    border-radius: 0;
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
@@ -720,6 +746,7 @@ input[type="range"] {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-top: none;
+    border-left: none;
     border-right: 1px solid var(--line);
     box-shadow: none;
     padding: 22px 14px;
@@ -976,6 +1003,9 @@ input[type="range"] {
 }
 .stack {
   display: grid;
+  /* minmax(0,1fr) — not the default `auto` — so wide children (long
+     titles, price columns) shrink to the column instead of overflowing. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .row {
