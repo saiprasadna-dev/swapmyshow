@@ -269,6 +269,63 @@ export async function setPhone(phone: string): Promise<AuthUser> {
   return data.user;
 }
 
+/** Text the signed-in user a code to verify the phone on their account.
+    Returns a dev debugCode when no SMS provider is configured. */
+export async function requestPhoneVerify(): Promise<{ debugCode?: string }> {
+  const token = getToken();
+  if (!API_URL || !token) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/phone/verify/request`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    debugCode?: string;
+    error?: string;
+    retryAfterSeconds?: number;
+  };
+  if (!res.ok) {
+    throw new OtpError(
+      data.error ?? "request_failed",
+      res.status,
+      data.retryAfterSeconds
+    );
+  }
+  return { debugCode: data.debugCode };
+}
+
+/** Submit the texted code to mark the account's phone verified. */
+export async function verifyPhone(code: string): Promise<AuthUser> {
+  const token = getToken();
+  if (!API_URL || !token) throw new OtpError("auth_unavailable", 0);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/phone/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code }),
+    });
+  } catch {
+    throw new OtpError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    user?: AuthUser;
+    error?: string;
+  };
+  if (!res.ok || !data.user) {
+    throw new OtpError(data.error ?? "verify_failed", res.status);
+  }
+  return data.user;
+}
+
 /** Restore a signed-in user from a stored session token, if still valid. */
 export async function fetchMe(): Promise<AuthUser | null> {
   const token = getToken();

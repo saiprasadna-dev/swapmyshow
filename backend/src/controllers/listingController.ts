@@ -29,6 +29,7 @@ function parseListingBody(
       ask: number
       city: string | null
       hasScreenshot: boolean
+      screenshotUrl: string | null
     }
   | { error: string } {
   if (!body) return { error: 'invalid_body' }
@@ -63,6 +64,14 @@ function parseListingBody(
   const venue = typeof body.venue === 'string' && body.venue.trim() ? body.venue.trim() : null
   const city = typeof body.city === 'string' && body.city.trim() ? body.city.trim() : null
 
+  // Accept an uploaded image path/URL. Only allow our own upload paths or http
+  // URLs so a client can't stuff arbitrary junk into the field.
+  const rawShot = typeof body.screenshotUrl === 'string' ? body.screenshotUrl.trim() : ''
+  const screenshotUrl =
+    rawShot && (rawShot.startsWith('/uploads/') || rawShot.startsWith('http'))
+      ? rawShot
+      : null
+
   return {
     category,
     title,
@@ -73,7 +82,8 @@ function parseListingBody(
     paid,
     ask: Math.round(ask),
     city,
-    hasScreenshot: Boolean(body.hasScreenshot),
+    hasScreenshot: Boolean(body.hasScreenshot) || Boolean(screenshotUrl),
+    screenshotUrl,
   }
 }
 

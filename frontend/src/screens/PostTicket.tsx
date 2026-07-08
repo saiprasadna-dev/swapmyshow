@@ -4,6 +4,7 @@ import {
   createListing,
   updateListing,
   fetchListing,
+  uploadImage,
   ApiError,
 } from "../apiClient";
 import { BottomNav } from "../components";
@@ -38,7 +39,8 @@ export default function PostTicket({
   const [seats, setSeats] = useState("");
   const [paid, setPaid] = useState("");
   const [ask, setAsk] = useState("");
-  const [uploaded, setUploaded] = useState(false);
+  const [screenshotUrl, setScreenshotUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [posted, setPosted] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(editing);
@@ -59,6 +61,7 @@ export default function PostTicket({
         setSeats(l.seats.join(", "));
         setPaid(String(l.paid));
         setAsk(String(l.price));
+        setScreenshotUrl(l.screenshotUrl ?? "");
       })
       .catch(() => active && setError("load_failed"))
       .finally(() => active && setLoading(false));
@@ -69,6 +72,21 @@ export default function PostTicket({
 
   const whenValid = when !== "" && !Number.isNaN(new Date(when).getTime());
   const ready = event.trim() !== "" && ask !== "" && whenValid;
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      setScreenshotUrl(await uploadImage(file));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.code : "upload_failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const submit = async () => {
     if (!ready || busy) return;
@@ -85,7 +103,8 @@ export default function PostTicket({
       ticketCount: Math.max(1, seatList.length),
       paid: Number(paid.replace(/[^\d]/g, "")) || Number(ask.replace(/[^\d]/g, "")),
       ask: Number(ask.replace(/[^\d]/g, "")),
-      hasScreenshot: uploaded,
+      hasScreenshot: Boolean(screenshotUrl),
+      screenshotUrl: screenshotUrl || undefined,
     };
     try {
       const listing = editing
@@ -182,13 +201,38 @@ export default function PostTicket({
           />
         </div>
 
-        <button
+        <label
           className="upload"
-          onClick={() => setUploaded(true)}
-          style={uploaded ? { background: "var(--trust-bg)", color: "var(--trust)", borderColor: "rgba(14,159,110,.4)" } : undefined}
+          style={{
+            display: "block",
+            textAlign: "center",
+            cursor: "pointer",
+            ...(screenshotUrl
+              ? { background: "var(--trust-bg)", color: "var(--trust)", borderColor: "rgba(14,159,110,.4)" }
+              : {}),
+          }}
         >
-          {uploaded ? "✓ Ticket screenshot added" : "＋ Upload ticket screenshot"}
-        </button>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={onPickFile}
+          />
+          {uploading
+            ? "Uploading…"
+            : screenshotUrl
+              ? "✓ Ticket screenshot added — tap to replace"
+              : "＋ Upload ticket screenshot"}
+        </label>
+        {screenshotUrl && (
+          <div style={{ marginTop: 10 }}>
+            <img
+              src={screenshotUrl}
+              alt="Ticket screenshot"
+              style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)" }}
+            />
+          </div>
+        )}
 
         <div className="row" style={{ gap: 10, marginTop: 14 }}>
           <div className="field" style={{ flex: 1, marginBottom: 0 }}>

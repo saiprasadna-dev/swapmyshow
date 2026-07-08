@@ -6,11 +6,13 @@ import {
   sendMessage,
   advanceSwap,
   markSwapRead,
+  makeOffer,
+  acceptOffer,
   type SwapView,
   type ChatMessage,
 } from "../apiClient";
 import type { AuthUser } from "../authClient";
-import { SwapTracker, Verified } from "../components";
+import { SwapTracker, Verified, BottomNav } from "../components";
 import type { Screen } from "../App";
 
 // DB step → 3-step tracker position.
@@ -29,6 +31,7 @@ export default function Chat({
   const [swap, setSwap] = useState<SwapView | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [offerDraft, setOfferDraft] = useState("");
   const lastId = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -94,12 +97,33 @@ export default function Chat({
     }
   };
 
+  const submitOffer = async () => {
+    const price = Number(offerDraft.replace(/[^\d]/g, ""));
+    if (!price) return;
+    try {
+      const updated = await makeOffer(swapId, price);
+      setSwap(updated);
+      setOfferDraft("");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const accept = async () => {
+    try {
+      setSwap(await acceptOffer(swapId));
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (!swap) {
     return (
-      <div className="screen no-nav">
+      <div className="screen">
         <p className="small muted" style={{ textAlign: "center", marginTop: 40 }}>
           Loading chat…
         </p>
+        <BottomNav active="messages" go={go} />
       </div>
     );
   }
@@ -116,7 +140,7 @@ export default function Chat({
   const confirmed = swap.step !== "agree";
 
   return (
-    <div className="screen no-nav">
+    <div className="screen">
       <header className="top" style={{ marginBottom: 10 }}>
         <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "messages" })}>
           ←
@@ -127,10 +151,37 @@ export default function Chat({
             {otherVerified && <Verified />}
           </div>
           <div className="small muted">
-            {l.title} · {l.when}
+            {isSeller ? "Buyer" : "Seller"} · this swap
           </div>
         </div>
       </header>
+
+      {/* Persistent ticket summary so it's clear which ticket this chat is about. */}
+      <button
+        className="ticket listing-card"
+        style={{ marginBottom: 12 }}
+        onClick={() => go({ name: "listing", id: l.id })}
+      >
+        <div className={`poster poster-cat-${l.category.toLowerCase()}`} style={{ width: 48, height: 48, fontSize: 22 }} aria-hidden>
+          {l.emoji}
+        </div>
+        <div className="listing-body">
+          <div className="listing-title">{l.title}</div>
+          <div className="listing-meta">
+            {[l.venue || "Venue TBA", l.when].join(" · ")}
+            {l.seats.length > 0 && (
+              <>
+                {" · "}
+                <span className="seat-code">{l.seats.join("–")}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="listing-price">
+          <div className="price" style={{ fontSize: 16 }}>{inr(total)}</div>
+          <div className="small muted">agreed</div>
+        </div>
+      </button>
 
       <SwapTracker step={trackerStep(swap.step)} />
 
@@ -153,6 +204,48 @@ export default function Chat({
             </span>
             <span className="price">{inr(total)}</span>
           </div>
+
+          {/* Negotiate the price before confirming. */}
+          {swap.step === "agree" && (
+            <div style={{ margin: "0 0 10px" }}>
+              {swap.offerPrice != null ? (
+                swap.offerBy === user?.id ? (
+                  <div className="badge badge-plain" style={{ width: "100%", justifyContent: "center", padding: "8px 0" }}>
+                    You offered {inr(swap.offerPrice)} · waiting for {first}
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-outline btn-small"
+                    style={{ width: "100%" }}
+                    onClick={accept}
+                  >
+                    ✓ Accept {first}'s offer of {inr(swap.offerPrice)}
+                  </button>
+                )
+              ) : (
+                <div className="row" style={{ gap: 8 }}>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    placeholder="Offer a price"
+                    value={offerDraft}
+                    onChange={(e) => setOfferDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitOffer()}
+                    style={{ flex: 1 }}
+                    aria-label="Offer a price"
+                  />
+                  <button
+                    className="btn btn-ghost btn-small"
+                    style={{ whiteSpace: "nowrap" }}
+                    onClick={submitOffer}
+                  >
+                    💰 Offer
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {!confirmed ? (
             <button className="btn btn-primary" onClick={() => advance("confirm")}>
               ✓ Confirm swap
@@ -248,6 +341,8 @@ export default function Chat({
           ➤
         </button>
       </div>
+
+      <BottomNav active="messages" go={go} />
     </div>
   );
 }

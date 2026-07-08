@@ -81,7 +81,11 @@ export default function ListingDetail({
 
       <div className="ticket" style={{ marginTop: 12, padding: 0, overflow: "hidden", ["--notch-y" as never]: "62%" }}>
         <div className={`poster poster-lg poster-cat-${l.category.toLowerCase()}`} aria-hidden>
-          {l.emoji}
+          {l.screenshotUrl ? (
+            <img src={l.screenshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            l.emoji
+          )}
         </div>
         <div style={{ padding: 14 }}>
           <h2>{l.title}</h2>

@@ -29,6 +29,7 @@ export interface Listing {
   price: number; // asking price
   paid: number; // original price
   emoji: string; // derived from category
+  screenshotUrl?: string; // uploaded ticket image, if any (absolute URL)
   seller: Seller;
   status?: "active" | "sold";
 }

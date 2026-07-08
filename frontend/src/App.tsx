@@ -104,7 +104,7 @@ function App() {
       {screen.name === "post" && <PostTicket go={go} editId={screen.editId} />}
       {screen.name === "messages" && <Messages go={go} />}
       {screen.name === "profile" && (
-        <Profile go={go} user={user} onSignOut={handleSignOut} />
+        <Profile go={go} user={user} onSignOut={handleSignOut} onUser={setUser} />
       )}
       {screen.name === "listing" && <ListingDetail id={screen.id} go={go} />}
       {screen.name === "chat" && (

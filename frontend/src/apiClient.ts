@@ -56,6 +56,7 @@ interface ApiListing {
   city: string | null;
   status: string;
   hasScreenshot: boolean;
+  screenshotUrl: string | null;
   seller: ApiSeller;
 }
 
@@ -70,6 +71,8 @@ interface ApiSwap {
   sellerMarkedTransferred: boolean;
   role: "buyer" | "seller";
   buyerName: string;
+  offerPrice: number | null;
+  offerBy: number | null;
   listing: ApiListing;
 }
 
@@ -100,6 +103,8 @@ export interface SwapView {
   sellerMarkedTransferred: boolean;
   role: "buyer" | "seller";
   buyerName: string;
+  offerPrice: number | null;
+  offerBy: number | null;
   listing: Listing;
 }
 
@@ -144,6 +149,11 @@ const toListing = (l: ApiListing): Listing => {
     price: l.price,
     paid: l.paid,
     emoji: emojiFor(category),
+    screenshotUrl: l.screenshotUrl
+      ? l.screenshotUrl.startsWith("http")
+        ? l.screenshotUrl
+        : `${API_URL}${l.screenshotUrl}`
+      : undefined,
     seller: toSeller(l.seller),
     status: l.status === "sold" ? "sold" : "active",
   };
@@ -160,6 +170,8 @@ const toSwapView = (s: ApiSwap): SwapView => ({
   sellerMarkedTransferred: s.sellerMarkedTransferred,
   role: s.role,
   buyerName: s.buyerName,
+  offerPrice: s.offerPrice,
+  offerBy: s.offerBy,
   listing: toListing(s.listing),
 });
 
@@ -222,6 +234,30 @@ export interface NewListing {
   ask: number;
   city?: string;
   hasScreenshot: boolean;
+  screenshotUrl?: string;
+}
+
+/** Upload an image (raw file body) and return an absolute URL to it. */
+export async function uploadImage(file: File): Promise<string> {
+  if (!API_URL) throw new ApiError("api_unavailable", 0);
+  const token = getToken();
+  const headers = new Headers();
+  headers.set("Content-Type", file.type);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/uploads`, { method: "POST", headers, body: file });
+  } catch {
+    throw new ApiError("network", 0);
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    url?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.url) {
+    throw new ApiError(data.error ?? "upload_failed", res.status);
+  }
+  return data.url.startsWith("http") ? data.url : `${API_URL}${data.url}`;
 }
 
 export async function createListing(input: NewListing): Promise<Listing> {
@@ -333,6 +369,26 @@ export async function advanceSwap(
   action: SwapAction
 ): Promise<SwapView> {
   const data = await api<{ swap: ApiSwap }>(`/swaps/${swapId}/${action}`, {
+    method: "POST",
+  });
+  return toSwapView(data.swap);
+}
+
+/** Propose a price in chat. */
+export async function makeOffer(
+  swapId: number,
+  price: number
+): Promise<SwapView> {
+  const data = await api<{ swap: ApiSwap }>(`/swaps/${swapId}/offer`, {
+    method: "POST",
+    body: JSON.stringify({ price }),
+  });
+  return toSwapView(data.swap);
+}
+
+/** Accept the counterparty's pending offer as the agreed price. */
+export async function acceptOffer(swapId: number): Promise<SwapView> {
+  const data = await api<{ swap: ApiSwap }>(`/swaps/${swapId}/offer/accept`, {
     method: "POST",
   });
   return toSwapView(data.swap);

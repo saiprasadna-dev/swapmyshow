@@ -26,6 +26,11 @@ export type AppBindings = {
 
   /** D1 database binding. */
   DB: D1Database
+
+  /** R2 bucket for uploaded ticket screenshots. Optional: when the binding
+      isn't configured, upload endpoints fail closed (503) and listings simply
+      have no image. See `wrangler.jsonc` for how to enable it. */
+  UPLOADS?: R2Bucket
 }
 
 /** The authenticated principal attached to a request by the auth middleware. */

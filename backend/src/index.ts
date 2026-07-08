@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth'
 import { listingRoutes } from './routes/listings'
 import { swapRoutes } from './routes/swaps'
 import { meRoutes } from './routes/me'
+import { uploadRoutes } from './routes/uploads'
 
 const app = new Hono<AppEnv>()
 
@@ -19,5 +20,6 @@ app.route('/auth', authRoutes)
 app.route('/listings', listingRoutes)
 app.route('/swaps', swapRoutes)
 app.route('/me', meRoutes)
+app.route('/uploads', uploadRoutes)
 
 export default app

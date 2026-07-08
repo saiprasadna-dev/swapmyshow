@@ -52,4 +52,12 @@
       "migrations_dir": "src/database/migrations"
     }
   ]
+
+  // R2 bucket for uploaded ticket screenshots. Optional — uploads fail closed
+  // (503) and listings just have no image until this is enabled. To turn on:
+  //   1) wrangler r2 bucket create swapmyshow-uploads
+  //   2) uncomment the block below and redeploy (`npm run deploy`)
+  // ,"r2_buckets": [
+  //   { "binding": "UPLOADS", "bucket_name": "swapmyshow-uploads" }
+  // ]
 }
