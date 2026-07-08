@@ -31,12 +31,15 @@
   --surface-2: #fbfaff;
   --line: #eae7f2;
 
-  --trust: #0ca678;
-  --trust-bg: #e6f7f0;
-  --urgent: #f4740b;
-  --urgent-bg: #fff1e4;
-  --danger: #e8437a;
-  --danger-bg: #fdeaf2;
+  /* Purple + white theme: "positive/trust" and "urgency" cues are purple
+     shades rather than green/orange, so the whole app stays on-palette. Red is
+     kept only for genuine warnings/errors; gold only for rating stars. */
+  --trust: #6d28d9;
+  --trust-bg: #efe9fe;
+  --urgent: #7c3aed;
+  --urgent-bg: #f1eafe;
+  --danger: #e11d63;
+  --danger-bg: #fdeaf1;
   --gold: #f5b50a;
 
   --radius: 18px;
@@ -360,8 +363,8 @@ h3 {
   color: var(--trust);
 }
 .badge-urgent {
-  background: var(--urgent-bg);
-  color: var(--urgent);
+  background: var(--brand-grad);
+  color: #fff;
 }
 .badge-plain {
   background: var(--bg);
@@ -462,20 +465,22 @@ button.ticket:active {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 /* per-category poster art */
+/* All category posters stay in the purple family — distinguished by hue and
+   depth (violet / indigo / fuchsia) so they read as one cohesive theme. */
 .poster-cat-movies {
-  background: linear-gradient(140deg, #7c3aed, #4f46e5);
+  background: linear-gradient(140deg, #7c3aed, #5b21b6);
 }
 .poster-cat-concerts {
-  background: linear-gradient(140deg, #ec4899, #8b5cf6);
+  background: linear-gradient(140deg, #c026d3, #7c3aed);
 }
 .poster-cat-sports {
-  background: linear-gradient(140deg, #10b981, #0891b2);
+  background: linear-gradient(140deg, #6366f1, #4338ca);
 }
 .poster-cat-events {
-  background: linear-gradient(140deg, #f59e0b, #ef4444);
+  background: linear-gradient(140deg, #a855f7, #7c3aed);
 }
 .poster-cat-travel {
-  background: linear-gradient(140deg, #06b6d4, #3b82f6);
+  background: linear-gradient(140deg, #8b5cf6, #6d28d9);
 }
 .poster-lg {
   width: 100%;
@@ -947,9 +952,9 @@ input[type="range"] {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, var(--urgent-bg), #fff6ee);
-  color: var(--urgent);
-  border: 1px solid rgba(244, 116, 11, 0.22);
+  background: linear-gradient(135deg, var(--brand-soft), var(--brand-soft-2));
+  color: var(--brand-deep);
+  border: 1px solid var(--brand-border);
   border-radius: var(--radius-sm);
   padding: 12px 15px;
   font-weight: 600;
@@ -1045,8 +1050,8 @@ input[type="range"] {
   place-items: center;
   font-size: 40px;
   margin: 0 auto;
-  box-shadow: 0 0 0 10px rgba(12, 166, 120, 0.08),
-    0 16px 30px -14px rgba(12, 166, 120, 0.5);
+  box-shadow: 0 0 0 10px rgba(124, 61, 244, 0.09),
+    0 16px 30px -14px rgba(124, 61, 244, 0.5);
   animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes pop {

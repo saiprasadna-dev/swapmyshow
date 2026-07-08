@@ -108,7 +108,7 @@ export default function Rate({
 
       <div style={{ marginTop: "auto", paddingTop: 18 }}>
         {done ? (
-          <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "rgba(14,159,110,.3)" }}>
+          <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "var(--brand-border)" }}>
             <strong style={{ color: "var(--trust)" }}>✓ Rating submitted</strong>
             <p className="small muted" style={{ margin: "6px 0 10px" }}>
               Ratings build the trust badges shown everywhere.
