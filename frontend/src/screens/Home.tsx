@@ -1,19 +1,13 @@
 import { useEffect, useState } from "react";
-import { type Category, type Listing } from "../data";
+import { type Category, type Listing, inr } from "../data";
 import { fetchListings, ApiError } from "../apiClient";
 import { BottomNav, TicketCard } from "../components";
 import type { Screen } from "../App";
 
 const cats: ("All" | Category)[] = ["All", "Movies", "Concerts", "Sports", "Events"];
-const timeTabs = [
-  { id: "tonight", label: "Tonight" },
-  { id: "tomorrow", label: "Tomorrow" },
-  { id: "weekend", label: "Weekend" },
-] as const;
 
 export default function Home({ go }: { go: (s: Screen) => void }) {
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
-  const [when, setWhen] = useState<(typeof timeTabs)[number]["id"]>("tonight");
   const [all, setAll] = useState<Listing[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,16 +23,16 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
     };
   }, []);
 
-  const feed = all.filter(
-    (l) => l.timeBucket === when && (cat === "All" || l.category === cat)
-  );
-  const soon = all.filter((l) => l.timeBucket === "tonight").length;
+  // Discovery: a "going soon" highlight strip, then the full browse-all feed
+  // (filtered only by category). Time filtering lives on Search.
+  const soon = all.filter((l) => l.timeBucket === "tonight");
+  const feed = all.filter((l) => cat === "All" || l.category === cat);
 
   return (
     <div className="screen">
       <header className="top">
         <div>
-          <div className="small muted">Tonight in</div>
+          <div className="small muted">Swaps near you</div>
           <h2>
             Going soon <span aria-hidden>🔥</span>
           </h2>
@@ -48,32 +42,35 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
         </button>
       </header>
 
-      <div className="chip-row" role="tablist" aria-label="When">
-        {timeTabs.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={when === t.id}
-            className={`chip ${when === t.id ? "on" : ""}`}
-            onClick={() => setWhen(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {when === "tonight" && soon > 0 && (
-        <button
-          className="banner-urgent"
-          style={{ margin: "12px 0 0" }}
-          onClick={() => setCat("All")}
-        >
-          <span aria-hidden>⚡</span> {soon} swaps going in the next 2 hrs — grab a
-          last-min deal
-        </button>
+      {soon.length > 0 && (
+        <>
+          <div className="section-label" style={{ marginTop: 2 }}>
+            ⚡ Tonight&apos;s deals
+          </div>
+          <div className="h-scroll">
+            {soon.map((l) => (
+              <button
+                key={l.id}
+                className="hcard"
+                onClick={() => go({ name: "listing", id: l.id })}
+              >
+                <div className={`hcard-poster poster-cat-${l.category.toLowerCase()}`} aria-hidden>
+                  {l.screenshotUrl ? <img src={l.screenshotUrl} alt="" /> : l.emoji}
+                </div>
+                <div className="hcard-title">{l.title}</div>
+                <div className="hcard-meta">{l.venue || "Venue TBA"}</div>
+                <div className="row between" style={{ marginTop: 6 }}>
+                  <span className="price" style={{ fontSize: 15 }}>{inr(l.price)}</span>
+                  {l.countdown && <span className="badge badge-urgent">⏳ {l.countdown}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="chip-row" style={{ marginTop: 12 }} aria-label="Category">
+      <div className="section-label">Browse all</div>
+      <div className="chip-row" aria-label="Category">
         {cats.map((c) => (
           <button
             key={c}
@@ -85,7 +82,7 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
         ))}
       </div>
 
-      <div className="stack" style={{ marginTop: 16 }}>
+      <div className="stack" style={{ marginTop: 14 }}>
         {feed.map((l) => (
           <TicketCard
             key={l.id}
@@ -98,7 +95,9 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
             <strong>
               {error
                 ? "Couldn't load listings."
-                : `No ${cat.toLowerCase()} swaps ${when} yet.`}
+                : cat === "All"
+                  ? "No swaps yet."
+                  : `No ${cat.toLowerCase()} swaps yet.`}
             </strong>
             <p className="small muted" style={{ margin: "6px 0 12px" }}>
               Have a ticket you can't use? List it in under a minute.

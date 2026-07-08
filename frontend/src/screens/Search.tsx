@@ -42,6 +42,13 @@ export default function Search({ go }: { go: (s: Screen) => void }) {
 
   return (
     <div className="screen">
+      <header className="top">
+        <div>
+          <div className="small muted">Find a ticket</div>
+          <h2>Search 🔎</h2>
+        </div>
+      </header>
+
       <div className="search-bar">
         <span aria-hidden>⌕</span>
         <input
