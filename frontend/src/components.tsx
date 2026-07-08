@@ -128,7 +128,7 @@ export function BottomNav({
   active,
   go,
 }: {
-  active: "home" | "search" | "post" | "profile";
+  active: "home" | "search" | "post" | "messages" | "profile";
   go: (s: Screen) => void;
 }) {
   return (
@@ -147,6 +147,13 @@ export function BottomNav({
       <button className="nav-post" onClick={() => go({ name: "post" })}>
         <span className="nav-icon">＋</span>
         <span>Sell</span>
+      </button>
+      <button
+        className={active === "messages" ? "on" : ""}
+        onClick={() => go({ name: "messages" })}
+      >
+        <span className="nav-icon">✉</span>
+        <span>Messages</span>
       </button>
       <button
         className={active === "profile" ? "on" : ""}

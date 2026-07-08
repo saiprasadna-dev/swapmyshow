@@ -3,6 +3,7 @@
    listing to sold and credits both users a successful swap. */
 
 import { getListingById, type PublicListing } from './listingRepo'
+import { getUserById } from './userRepo'
 
 /** DB step values. The UI tracker maps agree→1, transfer→2, rate/done→3. */
 export type SwapStep = 'agree' | 'transfer' | 'rate' | 'done'
@@ -29,13 +30,17 @@ export type PublicSwap = {
   sellerMarkedTransferred: boolean
   /** The caller's role in this swap, so the client can show the right actions. */
   role: 'buyer' | 'seller'
+  /** The buyer's display name — so the seller side of a chat can show who it
+      is with (the seller is already available via `listing.seller`). */
+  buyerName: string
   listing: PublicListing
 }
 
 const rowToPublic = (
   row: SwapRow,
   listing: PublicListing,
-  userId: number
+  userId: number,
+  buyerName = ''
 ): PublicSwap => ({
   id: row.id,
   listingId: row.listing_id,
@@ -46,6 +51,7 @@ const rowToPublic = (
   buyerConfirmedReceipt: row.buyer_confirmed_receipt === 1,
   sellerMarkedTransferred: row.seller_marked_transferred === 1,
   role: userId === row.buyer_id ? 'buyer' : 'seller',
+  buyerName,
   listing,
 })
 
@@ -113,7 +119,8 @@ export async function getSwapForUser(
   if (userId !== row.buyer_id && userId !== listing.sellerId) {
     return { error: 'forbidden' }
   }
-  return { swap: rowToPublic(row, listing, userId), row }
+  const buyer = await getUserById(db, row.buyer_id)
+  return { swap: rowToPublic(row, listing, userId, buyer?.name ?? ''), row }
 }
 
 /** Finalize once the seller has transferred and the buyer has confirmed
@@ -215,4 +222,67 @@ export async function listSwapsForUser(
     if (listing) swaps.push(rowToPublic(row, listing, userId))
   }
   return swaps
+}
+
+/** A swap surfaced in the Messages inbox: the swap plus the counterparty's
+    name and a preview of the most recent message. */
+export type PublicConversation = PublicSwap & {
+  /** The other person in this chat (buyer if you're the seller, and vice-versa). */
+  counterpartyName: string
+  /** Body of the latest message, or null if no one has written yet. */
+  lastMessage: string | null
+  lastMessageAt: string | null
+}
+
+type ConversationRow = SwapRow & {
+  buyer_name: string
+  last_body: string | null
+  last_at: string | null
+}
+
+/**
+ * Every conversation the user is part of — swaps they started (buyer) *and*
+ * swaps opened against their listings (seller) — newest activity first. This
+ * is what lets a seller see and reply to buyers who messaged them.
+ */
+export async function listConversationsForUser(
+  db: D1Database,
+  userId: number
+): Promise<PublicConversation[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT s.*,
+              b.name AS buyer_name,
+              (SELECT m.body FROM messages m WHERE m.swap_id = s.id
+                 ORDER BY m.id DESC LIMIT 1) AS last_body,
+              (SELECT m.created_at FROM messages m WHERE m.swap_id = s.id
+                 ORDER BY m.id DESC LIMIT 1) AS last_at
+         FROM swaps s
+         JOIN listings l ON l.id = s.listing_id
+         JOIN users b ON b.id = s.buyer_id
+        WHERE s.buyer_id = ?1 OR l.seller_id = ?1
+        ORDER BY COALESCE(
+          (SELECT m.created_at FROM messages m WHERE m.swap_id = s.id
+             ORDER BY m.id DESC LIMIT 1),
+          s.created_at
+        ) DESC`
+    )
+    .bind(userId)
+    .all<ConversationRow>()
+
+  const conversations: PublicConversation[] = []
+  for (const row of results ?? []) {
+    const listing = await getListingById(db, row.listing_id)
+    if (!listing) continue
+    const swap = rowToPublic(row, listing, userId, row.buyer_name)
+    const counterpartyName =
+      swap.role === 'buyer' ? listing.seller.name : row.buyer_name
+    conversations.push({
+      ...swap,
+      counterpartyName,
+      lastMessage: row.last_body ?? null,
+      lastMessageAt: row.last_at ?? null,
+    })
+  }
+  return conversations
 }

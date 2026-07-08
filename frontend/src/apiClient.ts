@@ -69,7 +69,14 @@ interface ApiSwap {
   buyerConfirmedReceipt: boolean;
   sellerMarkedTransferred: boolean;
   role: "buyer" | "seller";
+  buyerName: string;
   listing: ApiListing;
+}
+
+interface ApiConversation extends ApiSwap {
+  counterpartyName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
 }
 
 interface ApiMessage {
@@ -91,7 +98,14 @@ export interface SwapView {
   buyerConfirmedReceipt: boolean;
   sellerMarkedTransferred: boolean;
   role: "buyer" | "seller";
+  buyerName: string;
   listing: Listing;
+}
+
+export interface ConversationView extends SwapView {
+  counterpartyName: string;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
 }
 
 export interface ChatMessage {
@@ -142,7 +156,15 @@ const toSwapView = (s: ApiSwap): SwapView => ({
   buyerConfirmedReceipt: s.buyerConfirmedReceipt,
   sellerMarkedTransferred: s.sellerMarkedTransferred,
   role: s.role,
+  buyerName: s.buyerName,
   listing: toListing(s.listing),
+});
+
+const toConversation = (c: ApiConversation): ConversationView => ({
+  ...toSwapView(c),
+  counterpartyName: c.counterpartyName,
+  lastMessage: c.lastMessage,
+  lastMessageAt: c.lastMessageAt,
 });
 
 /* ---------- fetch helper ---------- */
@@ -240,6 +262,15 @@ export async function fetchSwap(swapId: number): Promise<SwapView> {
 export async function fetchMySwaps(): Promise<SwapView[]> {
   const data = await api<{ swaps: ApiSwap[] }>(`/me/swaps`);
   return data.swaps.map(toSwapView);
+}
+
+/** Every conversation the caller is in — as buyer or seller — for the
+    Messages inbox, newest activity first. */
+export async function fetchConversations(): Promise<ConversationView[]> {
+  const data = await api<{ conversations: ApiConversation[] }>(
+    `/me/conversations`
+  );
+  return data.conversations.map(toConversation);
 }
 
 export async function fetchMessages(

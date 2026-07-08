@@ -6,6 +6,7 @@ import Home from "./screens/Home";
 import Search from "./screens/Search";
 import ListingDetail from "./screens/Listing";
 import PostTicket from "./screens/PostTicket";
+import Messages from "./screens/Messages";
 import Chat from "./screens/Chat";
 import Confirmed from "./screens/Confirmed";
 import Profile from "./screens/Profile";
@@ -17,6 +18,7 @@ export type Screen =
   | { name: "home" }
   | { name: "search" }
   | { name: "post" }
+  | { name: "messages" }
   | { name: "profile" }
   | { name: "listing"; id: number }
   | { name: "chat"; swapId: number }
@@ -78,6 +80,7 @@ function App() {
       {screen.name === "home" && <Home go={go} />}
       {screen.name === "search" && <Search go={go} />}
       {screen.name === "post" && <PostTicket go={go} />}
+      {screen.name === "messages" && <Messages go={go} />}
       {screen.name === "profile" && (
         <Profile go={go} user={user} onSignOut={handleSignOut} />
       )}

@@ -61,6 +61,10 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `POST /swaps/:id/receipt` *(auth)* - buyer confirms receipt; finalizes the swap
 - `POST /swaps/:id/rate` *(auth)* - rate the counterparty once
 - `GET /me/swaps` *(auth)* - swaps the caller has bought into (Profile → Bought)
+- `GET /me/conversations` *(auth)* - every chat the caller is in, as **buyer or
+  seller** (Messages inbox). Each row carries the counterparty's name and a
+  preview of the latest message, newest activity first — this is how a seller
+  discovers and replies to buyers who messaged their listings.
 
 When both `transfer` and `receipt` are recorded the swap is marked `done`, the
 listing flips to `sold`, and both users' `swap_count` is incremented (one atomic

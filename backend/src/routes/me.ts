@@ -11,5 +11,6 @@ app.use('*', requireAuth)
 app.get('/listings', listingController.mine)
 app.get('/saved', listingController.saved)
 app.get('/swaps', swapController.mine)
+app.get('/conversations', swapController.conversations)
 
 export const meRoutes = app
