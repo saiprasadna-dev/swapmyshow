@@ -12,5 +12,6 @@ app.get('/listings', listingController.mine)
 app.get('/saved', listingController.saved)
 app.get('/swaps', swapController.mine)
 app.get('/conversations', swapController.conversations)
+app.get('/unread', swapController.unread)
 
 export const meRoutes = app

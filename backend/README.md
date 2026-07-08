@@ -60,6 +60,8 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `GET /swaps/:id` *(auth)* - swap state + joined listing (drives the tracker)
 - `GET /swaps/:id/messages?sinceId=` *(auth)* - poll chat history (incremental)
 - `POST /swaps/:id/messages` *(auth)* - send a chat message
+- `POST /swaps/:id/read` *(auth)* - mark this swap's chat read for the caller
+  (clears its unread count)
 - `POST /swaps/:id/confirm` *(auth)* - advance `agree → transfer`
 - `POST /swaps/:id/transfer` *(auth)* - seller marks the ticket transferred
 - `POST /swaps/:id/receipt` *(auth)* - buyer confirms receipt; finalizes the swap
@@ -68,7 +70,10 @@ password. Passwords are stored only as a salted PBKDF2 hash (see
 - `GET /me/conversations` *(auth)* - every chat the caller is in, as **buyer or
   seller** (Messages inbox). Each row carries the counterparty's name and a
   preview of the latest message, newest activity first — this is how a seller
-  discovers and replies to buyers who messaged their listings.
+  discovers and replies to buyers who messaged their listings. Each row also
+  carries an `unreadCount`.
+- `GET /me/unread` *(auth)* - total unread messages across the caller's chats
+  (the number behind the Messages nav badge)
 
 When both `transfer` and `receipt` are recorded the swap is marked `done`, the
 listing flips to `sold`, and both users' `swap_count` is incremented (one atomic

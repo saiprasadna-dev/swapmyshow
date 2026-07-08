@@ -1,6 +1,7 @@
 import type { Listing } from "./data";
 import { inr, savePct } from "./data";
 import type { Screen } from "./App";
+import { useUnread } from "./unread";
 
 /* ---------- badges ---------- */
 
@@ -131,6 +132,7 @@ export function BottomNav({
   active: "home" | "search" | "post" | "messages" | "profile";
   go: (s: Screen) => void;
 }) {
+  const unread = useUnread();
   return (
     <nav className="bottom-nav" aria-label="Main">
       <button className={active === "home" ? "on" : ""} onClick={() => go({ name: "home" })}>
@@ -152,7 +154,14 @@ export function BottomNav({
         className={active === "messages" ? "on" : ""}
         onClick={() => go({ name: "messages" })}
       >
-        <span className="nav-icon">✉</span>
+        <span className="nav-icon" style={{ position: "relative" }}>
+          ✉
+          {unread > 0 && (
+            <span className="nav-badge" aria-label={`${unread} unread`}>
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </span>
         <span>Messages</span>
       </button>
       <button

@@ -43,9 +43,21 @@ export default function Messages({ go }: { go: (s: Screen) => void }) {
             </div>
             <div className="listing-body">
               <div className="row between" style={{ gap: 8 }}>
-                <span className="listing-title">{c.counterpartyName || "Someone"}</span>
-                <span className="badge badge-plain">
-                  {c.role === "seller" ? "Selling" : "Buying"}
+                <span
+                  className="listing-title"
+                  style={c.unreadCount > 0 ? { color: "var(--ink)" } : undefined}
+                >
+                  {c.counterpartyName || "Someone"}
+                </span>
+                <span className="row" style={{ gap: 6 }}>
+                  {c.unreadCount > 0 && (
+                    <span className="nav-badge" style={{ position: "static" }}>
+                      {c.unreadCount > 9 ? "9+" : c.unreadCount}
+                    </span>
+                  )}
+                  <span className="badge badge-plain">
+                    {c.role === "seller" ? "Selling" : "Buying"}
+                  </span>
                 </span>
               </div>
               <div className="listing-meta">{c.listing.title}</div>
@@ -53,7 +65,8 @@ export default function Messages({ go }: { go: (s: Screen) => void }) {
                 className="small"
                 style={{
                   marginTop: 4,
-                  color: c.lastMessage ? "var(--ink-2)" : "var(--muted)",
+                  color: c.unreadCount > 0 ? "var(--ink)" : c.lastMessage ? "var(--ink-2)" : "var(--muted)",
+                  fontWeight: c.unreadCount > 0 ? 600 : 400,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
