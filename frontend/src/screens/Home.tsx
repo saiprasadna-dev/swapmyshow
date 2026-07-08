@@ -6,6 +6,7 @@ import type { Screen } from "../App";
 
 const cats: ("All" | Category)[] = ["All", "Movies", "Concerts", "Sports", "Events"];
 const timeTabs = [
+  { id: "any", label: "Any" },
   { id: "tonight", label: "Tonight" },
   { id: "tomorrow", label: "Tomorrow" },
   { id: "weekend", label: "Weekend" },
@@ -13,7 +14,8 @@ const timeTabs = [
 
 export default function Home({ go }: { go: (s: Screen) => void }) {
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
-  const [when, setWhen] = useState<(typeof timeTabs)[number]["id"]>("tonight");
+  // Default to "Any" so the feed shows every upcoming swap, not just tonight's.
+  const [when, setWhen] = useState<(typeof timeTabs)[number]["id"]>("any");
   const [all, setAll] = useState<Listing[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,9 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
   }, []);
 
   const feed = all.filter(
-    (l) => l.timeBucket === when && (cat === "All" || l.category === cat)
+    (l) =>
+      (when === "any" || l.timeBucket === when) &&
+      (cat === "All" || l.category === cat)
   );
   const soon = all.filter((l) => l.timeBucket === "tonight").length;
 
@@ -38,7 +42,7 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
     <div className="screen">
       <header className="top">
         <div>
-          <div className="small muted">Tonight in</div>
+          <div className="small muted">Swaps near you</div>
           <h2>
             Going soon <span aria-hidden>🔥</span>
           </h2>
@@ -98,7 +102,9 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
             <strong>
               {error
                 ? "Couldn't load listings."
-                : `No ${cat.toLowerCase()} swaps ${when} yet.`}
+                : cat === "All"
+                  ? "No swaps yet."
+                  : `No ${cat.toLowerCase()} swaps yet.`}
             </strong>
             <p className="small muted" style={{ margin: "6px 0 12px" }}>
               Have a ticket you can't use? List it in under a minute.
