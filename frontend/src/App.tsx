@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
+import { StatusBar, Style } from "@capacitor/status-bar";
 import { fetchMe, signOut, type AuthUser } from "./authClient";
 import { fetchUnreadCount } from "./apiClient";
 import { UnreadContext } from "./unread";
@@ -31,6 +34,42 @@ function App() {
   const [screen, setScreen] = useState<Screen>({ name: "signup" });
   const [user, setUser] = useState<AuthUser | null>(null);
   const go = (s: Screen) => setScreen(s);
+
+  // Native app shell (Android via Capacitor): purple status bar, and make the
+  // hardware back button navigate between screens instead of closing the app.
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    StatusBar.setBackgroundColor({ color: "#7c3aed" }).catch(() => {});
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    const sub = CapApp.addListener("backButton", () => {
+      const s = screenRef.current;
+      switch (s.name) {
+        case "signup":
+        case "addphone":
+        case "home":
+          CapApp.exitApp();
+          break;
+        case "chat":
+        case "confirmed":
+          setScreen({ name: "messages" });
+          break;
+        case "listing":
+          setScreen({ name: "home" });
+          break;
+        case "rate":
+          setScreen({ name: "profile" });
+          break;
+        default:
+          // search / post / messages / profile → home
+          setScreen({ name: "home" });
+      }
+    });
+    return () => {
+      sub.then((h) => h.remove()).catch(() => {});
+    };
+  }, []);
 
   // After any sign-in, everyone must have a phone on file: send accounts
   // without one (e.g. Google sign-ups) to the one-time add-phone step.

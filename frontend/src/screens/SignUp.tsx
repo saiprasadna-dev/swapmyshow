@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Verified } from "../components";
 import { GoogleSignInButton } from "../auth";
 import {
@@ -75,12 +76,16 @@ export default function SignUp({
           <DemoContinue onDone={onDone} />
         )}
 
-        <hr className="tear" />
-
-        {/* real Google account picker → signs in with the chosen Gmail */}
-        <div className="row" style={{ justifyContent: "center" }}>
-          <GoogleSignInButton onUser={onUser} />
-        </div>
+        {/* Google sign-in is web-only; the Android app uses email + password. */}
+        {!Capacitor.isNativePlatform() && (
+          <>
+            <hr className="tear" />
+            {/* real Google account picker → signs in with the chosen Gmail */}
+            <div className="row" style={{ justifyContent: "center" }}>
+              <GoogleSignInButton onUser={onUser} />
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ textAlign: "center" }}>

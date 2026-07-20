@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SwapMyShow</string>
+    <string name="title_activity_main">SwapMyShow</string>
+    <string name="package_name">com.swapmyshow.app</string>
+    <string name="custom_url_scheme">com.swapmyshow.app</string>
+</resources>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   GOOGLE_CLIENT_ID,
   authConfigured,
@@ -53,6 +54,10 @@ export function GoogleSignInButton({
 }: {
   onUser: (u: AuthUser) => void;
 }) {
+  // Google Identity Services doesn't work inside the Capacitor WebView (the
+  // Android app) — hide the button there; email + password is the app's
+  // sign-in. A native Google-auth plugin is a documented follow-up.
+  const isNative = Capacitor.isNativePlatform();
   const holder = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<
     "loading" | "ready" | "unconfigured" | "verifying" | "error"
@@ -60,7 +65,7 @@ export function GoogleSignInButton({
   const [message, setMessage] = useState<string>("");
 
   useEffect(() => {
-    if (!authConfigured) return;
+    if (!authConfigured || isNative) return;
     let cancelled = false;
 
     const handleCredential = async (resp: { credential?: string }) => {
@@ -106,7 +111,9 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [onUser]);
+  }, [onUser, isNative]);
+
+  if (isNative) return null;
 
   if (status === "unconfigured") {
     return (

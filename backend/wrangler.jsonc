@@ -20,9 +20,12 @@
     // Production mode
     "ENVIRONMENT": "production",
 
-    // Frontend URLs allowed to call the backend
-    // Keep localhost if you still want local development.
-    "ALLOWED_ORIGINS": "http://localhost:5173,https://swapmyshow.pages.dev",
+    // Frontend URLs allowed to call the backend.
+    // - localhost:5173  → local vite dev
+    // - swapmyshow.in / www → the production website (custom domain)
+    // - swapmyshow.pages.dev → the Pages default URL (kept as a fallback)
+    // - https://localhost → the Android app (Capacitor WebView origin)
+    "ALLOWED_ORIGINS": "http://localhost:5173,https://swapmyshow.in,https://www.swapmyshow.in,https://swapmyshow.pages.dev,https://localhost",
 
     // Google OAuth Client ID
     // If not using Google login yet, leave the placeholder.
