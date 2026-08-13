@@ -45,7 +45,7 @@ export default function Search({ go }: { go: (s: Screen) => void }) {
       <header className="top">
         <div>
           <div className="small muted">Find a ticket</div>
-          <h2>Search 🔎</h2>
+          <h2>Search</h2>
         </div>
       </header>
 
@@ -62,80 +62,90 @@ export default function Search({ go }: { go: (s: Screen) => void }) {
         />
       </div>
 
-      <div className="section-label">Filters</div>
+      <div className="search-filters">
+        <div>
+          <div className="small muted" style={{ marginBottom: 6 }}>
+            Category
+          </div>
+          <div className="chip-row">
+            {cats.map((c) => (
+              <button
+                key={c}
+                className={`chip ${cat === c ? "on" : ""}`}
+                onClick={() => setCat(cat === c ? null : c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="small muted" style={{ marginBottom: 6 }}>
-        Category
-      </div>
-      <div className="chip-row">
-        {cats.map((c) => (
-          <button
-            key={c}
-            className={`chip ${cat === c ? "on" : ""}`}
-            onClick={() => setCat(cat === c ? null : c)}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+        <div>
+          <div className="small muted" style={{ marginBottom: 6 }}>
+            When
+          </div>
+          <div className="chip-row">
+            {whens.map((w) => (
+              <button
+                key={w}
+                className={`chip ${when === w ? "on-purple" : ""}`}
+                onClick={() => setWhen(w)}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="small muted" style={{ margin: "14px 0 6px" }}>
-        When
-      </div>
-      <div className="chip-row">
-        {whens.map((w) => (
-          <button
-            key={w}
-            className={`chip ${when === w ? "on-purple" : ""}`}
-            onClick={() => setWhen(w)}
-          >
-            {w}
-          </button>
-        ))}
-      </div>
+        <div>
+          <div className="row between" style={{ marginBottom: 4 }}>
+            <span className="small muted">Max price</span>
+            <span className="price">₹{maxPrice}</span>
+          </div>
+          <input
+            type="range"
+            min={100}
+            max={2000}
+            step={50}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(Number(e.target.value))}
+            aria-label="Maximum price"
+          />
+        </div>
 
-      <div className="row between" style={{ margin: "16px 0 4px" }}>
-        <span className="small muted">Max price</span>
-        <span className="price">₹{maxPrice}</span>
+        <button
+          className="ticket row between"
+          onClick={() => setVerifiedOnly(!verifiedOnly)}
+          aria-pressed={verifiedOnly}
+        >
+          <span style={{ fontWeight: 600, fontSize: 14 }}>
+            ✓ Verified sellers only
+          </span>
+          <span className={`toggle ${verifiedOnly ? "on" : ""}`} />
+        </button>
       </div>
-      <input
-        type="range"
-        min={100}
-        max={2000}
-        step={50}
-        value={maxPrice}
-        onChange={(e) => setMaxPrice(Number(e.target.value))}
-        aria-label="Maximum price"
-      />
-
-      <button
-        className="ticket row between"
-        style={{ marginTop: 14 }}
-        onClick={() => setVerifiedOnly(!verifiedOnly)}
-        aria-pressed={verifiedOnly}
-      >
-        <span style={{ fontWeight: 600, fontSize: 14 }}>
-          ✓ Verified sellers only
-        </span>
-        <span className={`toggle ${verifiedOnly ? "on" : ""}`} />
-      </button>
 
       {showResults && (
-        <div className="stack" style={{ marginTop: 16 }}>
-          {results.map((l) => (
-            <TicketCard
-              key={l.id}
-              listing={l}
-              onOpen={() => go({ name: "listing", id: l.id })}
-            />
-          ))}
+        <>
+          <div className="section-label">
+            {results.length} result{results.length === 1 ? "" : "s"}
+          </div>
+          <div className="listing-grid">
+            {results.map((l) => (
+              <TicketCard
+                key={l.id}
+                listing={l}
+                onOpen={() => go({ name: "listing", id: l.id })}
+              />
+            ))}
+          </div>
           {results.length === 0 && (
             <p className="small muted" style={{ textAlign: "center" }}>
               Nothing matches these filters — raise the max price or switch
-              "When" to Any.
+              &quot;When&quot; to Any.
             </p>
           )}
-        </div>
+        </>
       )}
 
       {!showResults && (

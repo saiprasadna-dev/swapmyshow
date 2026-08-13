@@ -6,6 +6,14 @@ import type { Screen } from "../App";
 
 const cats: ("All" | Category)[] = ["All", "Movies", "Concerts", "Sports", "Events"];
 
+const catEmoji: Record<string, string> = {
+  All: "✦",
+  Movies: "🎬",
+  Concerts: "🎸",
+  Sports: "🏏",
+  Events: "🎤",
+};
+
 export default function Home({ go }: { go: (s: Screen) => void }) {
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
   const [all, setAll] = useState<Listing[]>([]);
@@ -30,21 +38,26 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
 
   return (
     <div className="screen">
-      <header className="top">
+      <section className="home-hero">
         <div>
-          <div className="small muted">Swaps near you</div>
-          <h2>
-            Going soon <span aria-hidden>🔥</span>
-          </h2>
+          <div className="home-hero-kicker">Swaps near you</div>
+          <h1>Going soon</h1>
+          <p>
+            Last-minute movie, concert and sports tickets from people who can&apos;t
+            go. Chat and swap — no payments on the app.
+          </p>
         </div>
-        <button className="icon-btn" aria-label="Search" onClick={() => go({ name: "search" })}>
-          ⌕
+        <button
+          className="btn btn-primary btn-small home-hero-cta"
+          onClick={() => go({ name: "search" })}
+        >
+          Search tickets
         </button>
-      </header>
+      </section>
 
       {soon.length > 0 && (
         <>
-          <div className="section-label" style={{ marginTop: 2 }}>
+          <div className="section-label" style={{ marginTop: 4 }}>
             ⚡ Tonight&apos;s deals
           </div>
           <div className="h-scroll">
@@ -59,7 +72,7 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
                 </div>
                 <div className="hcard-title">{l.title}</div>
                 <div className="hcard-meta">{l.venue || "Venue TBA"}</div>
-                <div className="row between" style={{ marginTop: 6 }}>
+                <div className="row between hcard-foot">
                   <span className="price" style={{ fontSize: 15 }}>{inr(l.price)}</span>
                   {l.countdown && <span className="badge badge-urgent">⏳ {l.countdown}</span>}
                 </div>
@@ -77,12 +90,13 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
             className={`chip ${cat === c ? "on-purple" : ""}`}
             onClick={() => setCat(c)}
           >
+            <span aria-hidden>{catEmoji[c] ?? ""} </span>
             {c}
           </button>
         ))}
       </div>
 
-      <div className="stack" style={{ marginTop: 14 }}>
+      <div className="listing-grid">
         {feed.map((l) => (
           <TicketCard
             key={l.id}
@@ -90,28 +104,28 @@ export default function Home({ go }: { go: (s: Screen) => void }) {
             onOpen={() => go({ name: "listing", id: l.id })}
           />
         ))}
-        {feed.length === 0 && (
-          <div className="ticket" style={{ textAlign: "center", padding: 26 }}>
-            <strong>
-              {error
-                ? "Couldn't load listings."
-                : cat === "All"
-                  ? "No swaps yet."
-                  : `No ${cat.toLowerCase()} swaps yet.`}
-            </strong>
-            <p className="small muted" style={{ margin: "6px 0 12px" }}>
-              Have a ticket you can't use? List it in under a minute.
-            </p>
-            <button
-              className="btn btn-outline btn-small"
-              style={{ margin: "0 auto" }}
-              onClick={() => go({ name: "post" })}
-            >
-              List your ticket
-            </button>
-          </div>
-        )}
       </div>
+      {feed.length === 0 && (
+        <div className="ticket empty-card">
+          <strong>
+            {error
+              ? "Couldn't load listings."
+              : cat === "All"
+                ? "No swaps yet."
+                : `No ${cat.toLowerCase()} swaps yet.`}
+          </strong>
+          <p className="small muted" style={{ margin: "6px 0 12px" }}>
+            Have a ticket you can&apos;t use? List it in under a minute.
+          </p>
+          <button
+            className="btn btn-outline btn-small"
+            style={{ margin: "0 auto" }}
+            onClick={() => go({ name: "post" })}
+          >
+            List your ticket
+          </button>
+        </div>
+      )}
 
       <BottomNav active="home" go={go} />
     </div>

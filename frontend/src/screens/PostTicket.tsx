@@ -134,7 +134,10 @@ export default function PostTicket({
   return (
     <div className="screen">
       <header className="top">
-        <h2>{editing ? "Edit listing" : "Post a ticket"}</h2>
+        <div>
+          <div className="small muted">{editing ? "Update your listing" : "Sell a leftover ticket"}</div>
+          <h2>{editing ? "Edit listing" : "Post a ticket"}</h2>
+        </div>
       </header>
 
       <div className="chip-row" aria-label="Category">
@@ -149,7 +152,7 @@ export default function PostTicket({
         ))}
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div className="form-wide">
         <div className="field">
           <label htmlFor="event">Event</label>
           <input
@@ -170,28 +173,26 @@ export default function PostTicket({
           />
         </div>
 
-        <div className="row" style={{ gap: 10 }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="city">City</label>
-            <input
-              id="city"
-              placeholder="Bengaluru"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="seats">Seats</label>
-            <input
-              id="seats"
-              placeholder="G12, G13"
-              value={seats}
-              onChange={(e) => setSeats(e.target.value)}
-            />
-          </div>
+        <div className="field">
+          <label htmlFor="city">City</label>
+          <input
+            id="city"
+            placeholder="Bengaluru"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="seats">Seats</label>
+          <input
+            id="seats"
+            placeholder="G12, G13"
+            value={seats}
+            onChange={(e) => setSeats(e.target.value)}
+          />
         </div>
 
-        <div className="field">
+        <div className="field field-span">
           <label htmlFor="when">Date &amp; time</label>
           <input
             id="when"
@@ -202,7 +203,7 @@ export default function PostTicket({
         </div>
 
         <label
-          className="upload"
+          className="upload field-span"
           style={{
             display: "block",
             textAlign: "center",
@@ -225,7 +226,7 @@ export default function PostTicket({
               : "＋ Upload ticket screenshot"}
         </label>
         {screenshotUrl && (
-          <div style={{ marginTop: 10 }}>
+          <div className="field-span" style={{ marginTop: 0, marginBottom: 14 }}>
             <img
               src={screenshotUrl}
               alt="Ticket screenshot"
@@ -234,34 +235,32 @@ export default function PostTicket({
           </div>
         )}
 
-        <div className="row" style={{ gap: 10, marginTop: 14 }}>
-          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-            <label htmlFor="paid">Paid</label>
-            <input
-              id="paid"
-              inputMode="numeric"
-              placeholder="₹320"
-              value={paid}
-              onChange={(e) => setPaid(e.target.value)}
-            />
-          </div>
-          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-            <label htmlFor="ask" style={{ color: "var(--purple)" }}>
-              Your ask
-            </label>
-            <input
-              id="ask"
-              inputMode="numeric"
-              placeholder="₹180"
-              value={ask}
-              onChange={(e) => setAsk(e.target.value)}
-              style={{ borderColor: "var(--purple-border)", background: "var(--purple-soft)" }}
-            />
-          </div>
+        <div className="field">
+          <label htmlFor="paid">Paid</label>
+          <input
+            id="paid"
+            inputMode="numeric"
+            placeholder="₹320"
+            value={paid}
+            onChange={(e) => setPaid(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="ask" style={{ color: "var(--purple)" }}>
+            Your ask
+          </label>
+          <input
+            id="ask"
+            inputMode="numeric"
+            placeholder="₹180"
+            value={ask}
+            onChange={(e) => setAsk(e.target.value)}
+            style={{ borderColor: "var(--purple-border)", background: "var(--purple-soft)" }}
+          />
         </div>
       </div>
 
-      <div style={{ marginTop: "auto", paddingTop: 18 }}>
+      <div className="form-actions">
         {posted !== null ? (
           <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "var(--brand-border)" }}>
             <strong style={{ color: "var(--trust)" }}>

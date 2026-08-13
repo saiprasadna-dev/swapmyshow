@@ -13,7 +13,7 @@ export const Countdown = ({ value }: { value: string }) => (
   <span className="badge badge-urgent">⏳ {value}</span>
 );
 
-/* ---------- ticket listing card (signature element) ---------- */
+/* ---------- event / poster card (BookMyShow-style listing) ---------- */
 
 export function TicketCard({
   listing,
@@ -25,19 +25,30 @@ export function TicketCard({
   trailing?: React.ReactNode;
 }) {
   const l = listing;
+  const pct = savePct(l);
+  const showSave = Number.isFinite(pct) && pct > 0 && pct < 90;
   return (
-    <button className="ticket listing-card" onClick={onOpen}>
-      <div className={`poster poster-cat-${l.category.toLowerCase()}`} aria-hidden>
+    <button className="event-card" onClick={onOpen} type="button">
+      <div className={`event-poster poster-cat-${l.category.toLowerCase()}`} aria-hidden>
         {l.screenshotUrl ? (
-          <img src={l.screenshotUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={l.screenshotUrl} alt="" />
         ) : (
-          l.emoji
+          <span className="event-emoji">{l.emoji}</span>
+        )}
+        <span className="event-cat">{l.category}</span>
+        {l.status === "sold" && <span className="event-sold">Sold</span>}
+        {l.countdown && l.status !== "sold" && (
+          <span className="badge badge-urgent event-urgent">⏳ {l.countdown}</span>
         )}
       </div>
-      <div className="listing-body">
-        <div className="listing-title">{l.title}</div>
-        <div className="listing-meta">
-          {(l.venue || "Venue TBA")} · {l.when}
+      <div className="event-body">
+        <div className="event-title">{l.title}</div>
+        <div className="event-venue">
+          {l.venue || "Venue TBA"}
+          {l.city ? ` · ${l.city}` : ""}
+        </div>
+        <div className="event-when">
+          {l.when}
           {l.seats.length > 0 && (
             <>
               {" · "}
@@ -45,24 +56,21 @@ export function TicketCard({
             </>
           )}
         </div>
-        <div className="row" style={{ gap: 6, marginTop: 6 }}>
-          {l.status === "sold" ? (
-            <span className="badge badge-sold">Sold</span>
-          ) : (
-            <>
-              {l.countdown && <Countdown value={l.countdown} />}
-              {l.seller.verified && <Verified />}
-            </>
-          )}
-        </div>
-      </div>
-      <div className="listing-price">
-        <div className="was">{inr(l.paid)}</div>
-        <div className="price" style={{ fontSize: 17 }}>
-          {inr(l.price)}
-        </div>
-        <div className="small" style={{ color: "var(--trust)", fontWeight: 600 }}>
-          save {savePct(l)}%
+        <div className="event-foot">
+          <div className="event-price-block">
+            <span className="was">{inr(l.paid)}</span>
+            <span className="price">{inr(l.price)}</span>
+          </div>
+          <div className="event-foot-right">
+            {l.status === "sold" ? (
+              <span className="badge badge-sold">Sold</span>
+            ) : (
+              <>
+                {showSave && <span className="event-save">save {pct}%</span>}
+                {l.seller.verified && <Verified />}
+              </>
+            )}
+          </div>
         </div>
       </div>
       {trailing}

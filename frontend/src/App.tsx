@@ -123,9 +123,11 @@ function App() {
     return () => clearInterval(timer);
   }, [user, screen, refreshUnread]);
 
+  const isAuth = screen.name === "signup" || screen.name === "addphone";
+
   return (
     <UnreadContext.Provider value={unread}>
-    <div className="phone">
+    <div className={isAuth ? "app-shell auth-shell" : "app-shell"}>
       {screen.name === "signup" && (
         <SignUp onDone={() => go({ name: "home" })} onUser={afterAuth} />
       )}

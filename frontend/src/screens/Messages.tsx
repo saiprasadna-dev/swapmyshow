@@ -27,15 +27,15 @@ export default function Messages({ go }: { go: (s: Screen) => void }) {
       <header className="top">
         <div>
           <div className="small muted">Your chats</div>
-          <h2>Messages 💬</h2>
+          <h2>Messages</h2>
         </div>
       </header>
 
-      <div className="stack">
+      <div className="inbox-list">
         {convos.map((c) => (
           <button
             key={c.id}
-            className="ticket listing-card"
+            className="ticket listing-card inbox-row"
             onClick={() => go({ name: "chat", swapId: c.id })}
           >
             <div className="avatar" aria-hidden>
@@ -79,7 +79,7 @@ export default function Messages({ go }: { go: (s: Screen) => void }) {
         ))}
 
         {!loading && convos.length === 0 && (
-          <div className="ticket" style={{ textAlign: "center", padding: 26 }}>
+          <div className="ticket empty-card">
             <strong>{error ? "Couldn't load messages." : "No messages yet."}</strong>
             <p className="small muted" style={{ margin: "6px 0 0" }}>
               When you start a swap — or a buyer messages one of your listings —

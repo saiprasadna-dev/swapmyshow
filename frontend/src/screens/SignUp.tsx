@@ -26,70 +26,69 @@ export default function SignUp({
   const [forgot, setForgot] = useState(false);
 
   return (
-    <div className="screen no-nav" style={{ justifyContent: "center", gap: 18 }}>
-      <div style={{ textAlign: "center" }}>
-        <div
-          className="avatar avatar-lg"
-          style={{
-            margin: "0 auto 14px",
-            background: "var(--purple)",
-            color: "#fff",
-            borderRadius: 22,
-          }}
-        >
-          S
+    <div className="screen no-nav auth-screen">
+      <aside className="auth-brand">
+        <div className="auth-brand-inner">
+          <div className="auth-mark" aria-hidden>
+            S
+          </div>
+          <h1>SwapMyShow</h1>
+          <p>Last-minute tickets. Save money.</p>
+          <ul className="auth-points">
+            <li>Leftover movie, concert and sports tickets</li>
+            <li>Venue, date and price up front</li>
+            <li>Chat and swap — no payments on the app</li>
+            <li>Verified members only</li>
+          </ul>
         </div>
-        <h1>SwapMyShow</h1>
-        <p className="muted" style={{ margin: "6px 0 0" }}>
-          Last-minute tickets. Save money.
-        </p>
-      </div>
+      </aside>
 
-      <div className="ticket" style={{ padding: 18 }}>
-        {apiConfigured ? (
-          forgot ? (
-            <ForgotForm onUser={onUser} onBack={() => setForgot(false)} />
+      <div className="auth-panel">
+        <div className="auth-panel-card">
+          {apiConfigured ? (
+            forgot ? (
+              <ForgotForm onUser={onUser} onBack={() => setForgot(false)} />
+            ) : (
+              <>
+                <div className="tab-row" role="tablist" aria-label="Log in or sign up" style={{ marginBottom: 14 }}>
+                  {(["login", "signup"] as Mode[]).map((m) => (
+                    <button
+                      key={m}
+                      role="tab"
+                      aria-selected={mode === m}
+                      className={`chip ${mode === m ? "on-purple" : ""}`}
+                      style={{ flex: 1, textAlign: "center" }}
+                      onClick={() => setMode(m)}
+                    >
+                      {m === "login" ? "Log in" : "Sign up"}
+                    </button>
+                  ))}
+                </div>
+                {mode === "login" ? (
+                  <LoginForm onUser={onUser} onForgot={() => setForgot(true)} />
+                ) : (
+                  <SignupForm onUser={onUser} />
+                )}
+              </>
+            )
           ) : (
+            <DemoContinue onDone={onDone} />
+          )}
+
+          {/* Google sign-in is web-only; the Android app uses email + password. */}
+          {!Capacitor.isNativePlatform() && (
             <>
-              <div className="tab-row" role="tablist" aria-label="Log in or sign up" style={{ marginBottom: 14 }}>
-                {(["login", "signup"] as Mode[]).map((m) => (
-                  <button
-                    key={m}
-                    role="tab"
-                    aria-selected={mode === m}
-                    className={`chip ${mode === m ? "on" : ""}`}
-                    style={{ flex: 1, textAlign: "center" }}
-                    onClick={() => setMode(m)}
-                  >
-                    {m === "login" ? "Log in" : "Sign up"}
-                  </button>
-                ))}
+              <hr className="tear" />
+              <div className="row" style={{ justifyContent: "center" }}>
+                <GoogleSignInButton onUser={onUser} />
               </div>
-              {mode === "login" ? (
-                <LoginForm onUser={onUser} onForgot={() => setForgot(true)} />
-              ) : (
-                <SignupForm onUser={onUser} />
-              )}
             </>
-          )
-        ) : (
-          <DemoContinue onDone={onDone} />
-        )}
+          )}
+        </div>
 
-        {/* Google sign-in is web-only; the Android app uses email + password. */}
-        {!Capacitor.isNativePlatform() && (
-          <>
-            <hr className="tear" />
-            {/* real Google account picker → signs in with the chosen Gmail */}
-            <div className="row" style={{ justifyContent: "center" }}>
-              <GoogleSignInButton onUser={onUser} />
-            </div>
-          </>
-        )}
-      </div>
-
-      <div style={{ textAlign: "center" }}>
-        <Verified label="Verified members only" />
+        <div className="auth-trust">
+          <Verified label="Verified members only" />
+        </div>
       </div>
     </div>
   );
