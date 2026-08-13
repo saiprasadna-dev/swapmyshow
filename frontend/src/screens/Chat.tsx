@@ -19,6 +19,21 @@ import type { Screen } from "../App";
 const trackerStep = (step: SwapView["step"]): 1 | 2 | 3 =>
   step === "agree" ? 1 : step === "transfer" ? 2 : 3;
 
+const seatLabel = (seats: string[]) =>
+  seats.length > 0 ? seats.join("–") : "Seat TBA";
+
+const ticketLabel = (seats: string[]) => {
+  const n = Math.max(seats.length, 1);
+  return `${n} ticket${n === 1 ? "" : "s"}`;
+};
+
+const msgTime = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+};
+
 export default function Chat({
   swapId,
   user,
@@ -119,7 +134,7 @@ export default function Chat({
 
   if (!swap) {
     return (
-      <div className="screen">
+      <div className="screen chat-screen">
         <p className="small muted" style={{ textAlign: "center", marginTop: 40 }}>
           Loading chat…
         </p>
@@ -138,120 +153,145 @@ export default function Chat({
   const first = otherName.split(" ")[0];
   const total = swap.agreedPrice;
   const confirmed = swap.step !== "agree";
+  const seats = seatLabel(l.seats);
+  const tickets = ticketLabel(l.seats);
 
   return (
-    <div className="screen">
-      <header className="top" style={{ marginBottom: 10 }}>
-        <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "messages" })}>
-          ←
+    <div className="screen chat-screen">
+      <div className="chat-head">
+        <header className="top chat-top">
+          <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "messages" })}>
+            ←
+          </button>
+          <div className="chat-who">
+            <div className="row" style={{ gap: 6 }}>
+              <h3>{otherName}</h3>
+              {otherVerified && <Verified />}
+            </div>
+            <div className="small muted">
+              {isSeller ? "Buyer" : "Seller"} · this swap
+            </div>
+          </div>
+        </header>
+
+        {/* Persistent ticket strip — tap opens the listing. */}
+        <button
+          className="ticket listing-card chat-ticket"
+          onClick={() => go({ name: "listing", id: l.id })}
+        >
+          <div
+            className={`poster poster-cat-${l.category.toLowerCase()}`}
+            aria-hidden
+          >
+            {l.screenshotUrl ? <img src={l.screenshotUrl} alt="" /> : l.emoji}
+          </div>
+          <div className="listing-body">
+            <div className="listing-title">{l.title}</div>
+            <div className="listing-meta">
+              {[l.venue || "Venue TBA", l.when, seats].join(" · ")}
+            </div>
+          </div>
+          <div className="listing-price">
+            <div className="price" style={{ fontSize: 16 }}>{inr(total)}</div>
+            <div className="small muted">agreed</div>
+          </div>
         </button>
-        <div style={{ flex: 1 }}>
-          <div className="row" style={{ gap: 6 }}>
-            <h3>{otherName}</h3>
-            {otherVerified && <Verified />}
-          </div>
-          <div className="small muted">
-            {isSeller ? "Buyer" : "Seller"} · this swap
-          </div>
-        </div>
-      </header>
 
-      {/* Persistent ticket summary so it's clear which ticket this chat is about. */}
-      <button
-        className="ticket listing-card"
-        style={{ marginBottom: 12 }}
-        onClick={() => go({ name: "listing", id: l.id })}
-      >
-        <div className={`poster poster-cat-${l.category.toLowerCase()}`} style={{ width: 48, height: 48, fontSize: 22 }} aria-hidden>
-          {l.emoji}
-        </div>
-        <div className="listing-body">
-          <div className="listing-title">{l.title}</div>
-          <div className="listing-meta">
-            {[l.venue || "Venue TBA", l.when].join(" · ")}
-            {l.seats.length > 0 && (
-              <>
-                {" · "}
-                <span className="seat-code">{l.seats.join("–")}</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="listing-price">
-          <div className="price" style={{ fontSize: 16 }}>{inr(total)}</div>
-          <div className="small muted">agreed</div>
-        </div>
-      </button>
-
-      <SwapTracker step={trackerStep(swap.step)} />
+        <SwapTracker step={trackerStep(swap.step)} />
+      </div>
 
       <div className="chat-scroll" ref={scrollRef}>
+        {messages.length === 0 && (
+          <p className="small muted chat-empty">
+            Say hello and confirm the booking details below.
+          </p>
+        )}
         {messages.map((m) => (
           <div key={m.id} className={`bubble ${m.senderId === user?.id ? "me" : "them"}`}>
-            {m.body}
+            <span className="bubble-text">{m.body}</span>
+            {m.createdAt && (
+              <time className="bubble-time" dateTime={m.createdAt}>
+                {msgTime(m.createdAt)}
+              </time>
+            )}
           </div>
         ))}
 
-        {/* confirm details card */}
-        <div className="ticket" style={{ alignSelf: "stretch" }}>
-          <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
-            CONFIRM DETAILS
-          </div>
-          <div className="row between" style={{ margin: "6px 0" }}>
-            <span>
-              {l.seats.length} seat{l.seats.length > 1 ? "s" : ""}{" "}
-              <span className="seat-code">{l.seats.join("–")}</span>
-            </span>
-            <span className="price">{inr(total)}</span>
-          </div>
+        {/* Booking summary + confirm / offer */}
+        <div className="ticket confirm-card">
+          <div className="confirm-card-kicker">Booking summary</div>
+          <dl className="confirm-facts">
+            <div>
+              <dt>Event</dt>
+              <dd>{l.title}</dd>
+            </div>
+            <div>
+              <dt>Venue</dt>
+              <dd>
+                {l.venue || "Venue TBA"}
+                {l.city ? ` · ${l.city}` : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Date & time</dt>
+              <dd>{l.when}</dd>
+            </div>
+            <div>
+              <dt>Seats</dt>
+              <dd>
+                <span className="seat-code">{seats}</span>
+                <span className="confirm-tickets">{tickets}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Price</dt>
+              <dd className="price">{inr(total)}</dd>
+            </div>
+          </dl>
 
-          {/* Negotiate the price before confirming. */}
           {swap.step === "agree" && (
-            <div style={{ margin: "0 0 10px" }}>
+            <div className="confirm-offer">
               {swap.offerPrice != null ? (
                 swap.offerBy === user?.id ? (
-                  <div className="badge badge-plain" style={{ width: "100%", justifyContent: "center", padding: "8px 0" }}>
+                  <div className="badge badge-plain confirm-offer-status">
                     You offered {inr(swap.offerPrice)} · waiting for {first}
                   </div>
                 ) : (
-                  <button
-                    className="btn btn-outline btn-small"
-                    style={{ width: "100%" }}
-                    onClick={accept}
-                  >
-                    ✓ Accept {first}'s offer of {inr(swap.offerPrice)}
+                  <button className="btn btn-outline" onClick={accept}>
+                    ✓ Accept {first}&apos;s offer of {inr(swap.offerPrice)}
                   </button>
                 )
               ) : (
-                <div className="row" style={{ gap: 8 }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="offer-price">Your offer</label>
                   <input
+                    id="offer-price"
                     className="input"
                     inputMode="numeric"
                     placeholder="Offer a price"
                     value={offerDraft}
                     onChange={(e) => setOfferDraft(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && submitOffer()}
-                    style={{ flex: 1 }}
                     aria-label="Offer a price"
                   />
-                  <button
-                    className="btn btn-ghost btn-small"
-                    style={{ whiteSpace: "nowrap" }}
-                    onClick={submitOffer}
-                  >
-                    💰 Offer
-                  </button>
                 </div>
               )}
             </div>
           )}
 
           {!confirmed ? (
-            <button className="btn btn-primary" onClick={() => advance("confirm")}>
-              ✓ Confirm swap
-            </button>
+            <div className="confirm-actions">
+              {swap.offerPrice == null && (
+                <button className="btn btn-ghost" onClick={submitOffer} disabled={!offerDraft.trim()}>
+                  Send offer
+                </button>
+              )}
+              <button className="btn btn-primary" onClick={() => advance("confirm")}>
+                ✓ Confirm swap
+              </button>
+            </div>
           ) : (
-            <div className="badge badge-trust" style={{ width: "100%", justifyContent: "center", padding: "8px 0" }}>
+            <div className="badge badge-trust confirm-offer-status">
               ✓ Swap confirmed — waiting on transfer
             </div>
           )}
@@ -259,23 +299,17 @@ export default function Chat({
 
         {/* Buyer's step 2: confirm they received the ticket. */}
         {confirmed && !isSeller && (
-          <div className="ticket" style={{ alignSelf: "stretch" }}>
-            <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
-              STEP 2 · CONFIRM RECEIPT
-            </div>
-            <p className="small" style={{ margin: "4px 0 10px" }}>
+          <div className="ticket confirm-card">
+            <div className="confirm-card-kicker">Step 2 · Confirm receipt</div>
+            <p className="small" style={{ margin: "0 0 12px" }}>
               Got the e-ticket from {first}?
             </p>
-            <div className="row" style={{ gap: 8 }}>
-              <button
-                className="btn btn-primary btn-small"
-                style={{ flex: 1 }}
-                onClick={() => advance("receipt")}
-              >
-                ✓ Yes, got it
-              </button>
-              <button className="btn btn-ghost btn-small" style={{ flex: 1 }}>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" type="button">
                 Not yet
+              </button>
+              <button className="btn btn-primary" onClick={() => advance("receipt")}>
+                ✓ Yes, got it
               </button>
             </div>
           </div>
@@ -283,31 +317,27 @@ export default function Chat({
 
         {/* Seller's step 2: send the ticket, then mark it transferred. */}
         {confirmed && isSeller && (
-          <div className="ticket" style={{ alignSelf: "stretch" }}>
-            <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".04em" }}>
-              STEP 2 · TRANSFER TICKET
-            </div>
-            <p className="small" style={{ margin: "4px 0 10px" }}>
+          <div className="ticket confirm-card">
+            <div className="confirm-card-kicker">Step 2 · Transfer ticket</div>
+            <p className="small" style={{ margin: "0 0 12px" }}>
               Send the e-ticket to {first} in chat, then mark it transferred.
             </p>
             {swap.sellerMarkedTransferred ? (
-              <div className="badge badge-trust" style={{ width: "100%", justifyContent: "center", padding: "8px 0" }}>
+              <div className="badge badge-trust confirm-offer-status">
                 ✓ Marked as transferred
               </div>
             ) : (
-              <button
-                className="btn btn-primary btn-small"
-                style={{ width: "100%" }}
-                onClick={() => advance("transfer")}
-              >
+              <button className="btn btn-primary" onClick={() => advance("transfer")}>
                 ✓ Mark as transferred
               </button>
             )}
           </div>
         )}
+      </div>
 
+      <div className="chat-dock">
         {!confirmed && (
-          <div className="row" style={{ gap: 8 }}>
+          <div className="chip-row chat-quick">
             <button className="chip" onClick={() => send("Still available?")}>
               Still available?
             </button>
@@ -316,30 +346,28 @@ export default function Chat({
             </button>
           </div>
         )}
-      </div>
 
-      <div className="nudge" style={{ marginBottom: 10 }}>
-        <span aria-hidden>⚠</span> Only confirm once you have the ticket.
-      </div>
+        <div className="nudge">
+          <span aria-hidden>⚠</span> Only confirm once you have the ticket.
+        </div>
 
-      <div className="row" style={{ gap: 8 }}>
-        <input
-          className="input"
-          placeholder="Message…"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send(draft)}
-          aria-label="Message"
-          style={{ borderRadius: 999, flex: 1 }}
-        />
-        <button
-          className="icon-btn"
-          style={{ background: "var(--purple)", color: "#fff", border: "none" }}
-          aria-label="Send message"
-          onClick={() => send(draft)}
-        >
-          ➤
-        </button>
+        <div className="composer">
+          <input
+            className="input"
+            placeholder="Message…"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send(draft)}
+            aria-label="Message"
+          />
+          <button
+            className="icon-btn composer-send"
+            aria-label="Send message"
+            onClick={() => send(draft)}
+          >
+            ➤
+          </button>
+        </div>
       </div>
 
       <BottomNav active="messages" go={go} />
