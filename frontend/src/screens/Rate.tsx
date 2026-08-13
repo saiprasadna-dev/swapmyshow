@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+import { inr } from "../data";
 import { fetchSwap, submitRating, ApiError, type SwapView } from "../apiClient";
 import type { Screen } from "../App";
+
+const seatLabel = (seats: string[]) =>
+  seats.length > 0 ? seats.join("–") : "Seat TBA";
 
 export default function Rate({
   swapId,
@@ -45,9 +49,12 @@ export default function Rate({
 
   // Fall back to a neutral placeholder until the swap loads.
   const s = swap?.listing.seller ?? { name: "Seller", swaps: 0 };
+  const l = swap?.listing;
+  const other =
+    swap?.role === "seller" ? swap.buyerName || "Buyer" : s.name;
 
   return (
-    <div className="screen no-nav">
+    <div className="screen no-nav rate-screen">
       <header className="top">
         <button className="icon-btn back" aria-label="Back" onClick={() => go({ name: "profile" })}>
           ←
@@ -56,26 +63,50 @@ export default function Rate({
         <span style={{ width: 40 }} />
       </header>
 
-      <div style={{ textAlign: "center", marginTop: 10 }}>
-        <div className="avatar avatar-lg" style={{ margin: "0 auto 10px" }}>
-          {s.name[0]}
-        </div>
-        <h2>{s.name}</h2>
-      </div>
-
-      <div className="stars" style={{ margin: "18px 0" }} role="radiogroup" aria-label="Rating">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            role="radio"
-            aria-checked={stars === n}
-            aria-label={`${n} star${n > 1 ? "s" : ""}`}
-            className={n <= stars ? "on" : ""}
-            onClick={() => setStars(n)}
+      {swap && l && (
+        <div className="ticket listing-card chat-ticket" style={{ marginBottom: 12 }}>
+          <div
+            className={`poster poster-cat-${l.category.toLowerCase()}`}
+            aria-hidden
           >
-            ★
-          </button>
-        ))}
+            {l.screenshotUrl ? <img src={l.screenshotUrl} alt="" /> : l.emoji}
+          </div>
+          <div className="listing-body">
+            <div className="listing-title">{l.title}</div>
+            <div className="listing-meta">
+              {[l.venue || "Venue TBA", l.when, seatLabel(l.seats)].join(" · ")}
+            </div>
+          </div>
+          <div className="listing-price">
+            <div className="price" style={{ fontSize: 16 }}>{inr(swap.agreedPrice)}</div>
+            <div className="small muted">agreed</div>
+          </div>
+        </div>
+      )}
+
+      <div className="ticket rate-card">
+        <div className="row" style={{ gap: 12 }}>
+          <div className="avatar">{other[0]}</div>
+          <div>
+            <h2 style={{ fontSize: 18 }}>{other}</h2>
+            <div className="small muted">How did this swap go?</div>
+          </div>
+        </div>
+
+        <div className="stars" style={{ margin: "14px 0 4px" }} role="radiogroup" aria-label="Rating">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              role="radio"
+              aria-checked={stars === n}
+              aria-label={`${n} star${n > 1 ? "s" : ""}`}
+              className={n <= stars ? "on" : ""}
+              onClick={() => setStars(n)}
+            >
+              ★
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="field">
@@ -89,10 +120,8 @@ export default function Rate({
         />
       </div>
 
-      <div className="ticket">
-        <div className="small muted" style={{ fontWeight: 700, letterSpacing: ".05em" }}>
-          WHY WE'RE SAFER
-        </div>
+      <div className="ticket confirm-card">
+        <div className="confirm-card-kicker">Why we&apos;re safer</div>
         <ul className="check-list">
           <li>
             <span className="tick">✓</span> ID verified
@@ -106,14 +135,14 @@ export default function Rate({
         </ul>
       </div>
 
-      <div style={{ marginTop: "auto", paddingTop: 18 }}>
+      <div className="rate-cta">
         {done ? (
           <div className="ticket" style={{ textAlign: "center", background: "var(--trust-bg)", borderColor: "var(--brand-border)" }}>
             <strong style={{ color: "var(--trust)" }}>✓ Rating submitted</strong>
             <p className="small muted" style={{ margin: "6px 0 10px" }}>
               Ratings build the trust badges shown everywhere.
             </p>
-            <button className="btn btn-outline btn-small" style={{ margin: "0 auto" }} onClick={() => go({ name: "home" })}>
+            <button className="btn btn-primary" onClick={() => go({ name: "home" })}>
               Back to home
             </button>
           </div>
@@ -121,7 +150,7 @@ export default function Rate({
           <>
             {error && (
               <p className="small" style={{ color: "var(--danger, #c0392b)", textAlign: "center", marginBottom: 8 }}>
-                Couldn't submit — try again.
+                Couldn&apos;t submit — try again.
               </p>
             )}
             <button className="btn btn-primary" onClick={submit} disabled={busy}>

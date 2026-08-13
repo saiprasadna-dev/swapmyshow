@@ -110,7 +110,7 @@ export function SellerCard({ listing }: { listing: Listing }) {
 export function SwapTracker({ step }: { step: 1 | 2 | 3 }) {
   const steps = ["Agree", "Transfer", "Rate"] as const;
   return (
-    <div className="tracker" aria-label={`Swap progress: step ${step} of 3`}>
+    <div className="tracker swap-tracker" aria-label={`Swap progress: step ${step} of 3`}>
       {steps.flatMap((label, i) => {
         const n = i + 1;
         const state = n < step ? "done" : n === step ? "now" : "";
