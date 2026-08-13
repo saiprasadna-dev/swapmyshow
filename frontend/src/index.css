@@ -1,10 +1,10 @@
 /* ---------------------------------------------------------------
-   SwapMyShow design system — v2, a premium booking-app makeover.
-   Inspired by BookMyShow / District / Paytm Insider:
+   SwapMyShow design system — v3, dense Indian booking-app layout.
+   Inspired by BookMyShow / District:
+     • full-width desktop (sidebar + multi-column poster grid)
      • colourful, poster-forward listing cards
      • a vivid violet brand with gradient CTAs + soft glows
-     • green = trust, orange = urgency, pink = safety nudges
-   Same class contract as before — screens are untouched.
+   Same flows and API contracts — visual density only.
 ---------------------------------------------------------------- */
 :root {
   /* brand — vivid violet with a gradient companion for CTAs */
@@ -42,9 +42,9 @@
   --danger-bg: #fdeaf1;
   --gold: #f5b50a;
 
-  --radius: 18px;
-  --radius-sm: 12px;
-  --radius-lg: 24px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 22px;
   --shadow-sm: 0 2px 10px -4px rgba(23, 18, 37, 0.16);
   --shadow: 0 14px 34px -18px rgba(23, 18, 37, 0.28);
   --shadow-lg: 0 24px 50px -22px rgba(23, 18, 37, 0.32);
@@ -54,7 +54,9 @@
   --display: "Sora", var(--sans);
   --mono: ui-monospace, "SF Mono", Consolas, monospace;
 
-  font: 15px/1.5 var(--sans);
+  --sidebar-w: 232px;
+
+  font: 15px/1.45 var(--sans);
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -67,8 +69,13 @@
 body {
   margin: 0;
   background: var(--bg);
-  /* never let a stray wide child cause a horizontal scrollbar */
   overflow-x: clip;
+}
+#root,
+.app-shell,
+.phone {
+  width: 100%;
+  min-height: 100svh;
 }
 button {
   font: inherit;
@@ -100,59 +107,24 @@ textarea {
 }
 
 /* ------------------------------- app frame ------------------- */
+.app-shell,
 .phone {
-  width: 100%;
-  max-width: 100%;
-  min-height: 100svh;
-  margin: 0 auto;
+  margin: 0;
   background: var(--bg);
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
-/* --- desktop / wide layout: nav moves to a fixed left sidebar --- */
-:root {
-  --sidebar-w: 250px;
-  --content-max: 780px;
-  --tablet-col: 620px;
-}
-
-/* --- tablet / large-phone (600–899px): keep the app-style bottom nav but
-   centre everything in a single readable column, framed like an app --- */
-@media (min-width: 600px) {
-  .screen:has(.bottom-nav) {
-    max-width: var(--tablet-col);
-    margin-inline: auto;
-    padding: 28px 24px 116px;
-  }
-  /* screens without a nav (signup, chat, listing…) centre a bit narrower */
-  .screen:not(:has(.bottom-nav)) {
-    max-width: 540px;
-    margin-inline: auto;
-    padding: 40px 28px 48px;
-  }
-}
-
-/* --- laptop / desktop / web (≥900px): nav becomes a fixed left sidebar and
-   the content column sits beside it, centred on very wide screens --- */
-@media (min-width: 900px) {
-  .screen:has(.bottom-nav) {
-    max-width: var(--content-max);
-    margin-left: max(var(--sidebar-w), calc((100% - var(--content-max)) / 2));
-    margin-right: auto;
-    padding: 36px 32px 56px;
-  }
-}
 .screen {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px 18px 104px;
+  padding: 14px 14px 96px;
   animation: screen-in 0.26s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .screen.no-nav {
-  padding-bottom: 24px;
+  padding-bottom: 20px;
 }
 @keyframes screen-in {
   from {
@@ -162,6 +134,36 @@ textarea {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* tablet: use the width — no more 620px phone column */
+@media (min-width: 600px) {
+  .screen {
+    padding: 18px 20px 110px;
+  }
+  .screen.no-nav {
+    padding: 22px 24px 32px;
+  }
+}
+
+/* desktop: sidebar + remaining width. Do not cap content at 780px. */
+@media (min-width: 900px) {
+  .screen:has(.bottom-nav) {
+    margin-left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+    max-width: none;
+    padding: 22px 28px 40px;
+  }
+  .screen.no-nav:not(.auth-screen) {
+    max-width: 1100px;
+    margin-inline: auto;
+    width: 100%;
+    padding: 28px 32px 40px;
+  }
+  /* chat stays readable rather than stretching to 1600px */
+  .screen:has(.chat-scroll) {
+    max-width: calc(var(--sidebar-w) + 820px);
   }
 }
 
@@ -175,7 +177,7 @@ h3 {
   line-height: 1.15;
 }
 h1 {
-  font-size: 27px;
+  font-size: 26px;
   font-weight: 800;
 }
 h2 {
@@ -210,7 +212,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 18px;
+  padding: 13px 18px;
   border-radius: 999px;
   font-family: var(--display);
   font-weight: 700;
@@ -254,10 +256,9 @@ h3 {
 }
 .btn-small {
   width: auto;
-  padding: 9px 18px;
+  padding: 8px 16px;
   font-size: 13.5px;
 }
-/* inline text button (e.g. "Change", "Resend code") */
 .linklike {
   background: none;
   border: 0;
@@ -317,12 +318,12 @@ h3 {
 }
 .chip {
   flex: 0 0 auto;
-  padding: 8px 16px;
+  padding: 7px 13px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   box-shadow: var(--shadow-sm);
   transition: background 0.16s, color 0.16s, border-color 0.16s,
@@ -352,9 +353,9 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -375,19 +376,16 @@ h3 {
   color: var(--muted);
 }
 
-/* ------------------------- ticket cards (signature) ----------
-   Every listing is a ticket stub: perforated notches on both
-   edges + a dashed tear line before the price row.              */
+/* ------------------------- ticket cards (inbox / forms) ------ */
 .ticket {
   position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 12px;
   box-shadow: var(--shadow);
   --notch-y: 50%;
 }
-/* interactive ticket cards (buttons) get a lift on hover */
 button.ticket {
   transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s ease;
 }
@@ -425,22 +423,22 @@ button.ticket:active {
   margin: 12px 0;
 }
 
-/* listing row card (home / search / profile) */
+/* listing row card (chat ticket header / inbox) */
 .listing-card {
   display: flex;
-  gap: 13px;
+  gap: 12px;
   align-items: center;
   text-align: left;
   width: 100%;
 }
 .poster {
   flex: 0 0 auto;
-  width: 62px;
-  height: 62px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
-  font-size: 26px;
+  font-size: 24px;
   color: #fff;
   background: var(--brand-grad);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
@@ -448,7 +446,6 @@ button.ticket:active {
   position: relative;
   overflow: hidden;
 }
-/* soft top-light gloss so posters read like glossy tiles */
 .poster::after {
   content: "";
   position: absolute;
@@ -464,9 +461,6 @@ button.ticket:active {
   position: relative;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
-/* per-category poster art */
-/* All category posters stay in the purple family — distinguished by hue and
-   depth (violet / indigo / fuchsia) so they read as one cohesive theme. */
 .poster-cat-movies {
   background: linear-gradient(140deg, #7c3aed, #5b21b6);
 }
@@ -484,10 +478,15 @@ button.ticket:active {
 }
 .poster-lg {
   width: 100%;
-  height: 168px;
+  height: 200px;
   border-radius: 0;
   font-size: 56px;
   margin: 0;
+}
+@media (min-width: 900px) {
+  .poster-lg {
+    height: 280px;
+  }
 }
 .listing-body {
   flex: 1;
@@ -496,7 +495,7 @@ button.ticket:active {
 .listing-title {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 15.5px;
+  font-size: 15px;
   letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
@@ -505,7 +504,7 @@ button.ticket:active {
 .listing-meta {
   font-size: 12.5px;
   color: var(--muted);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .listing-price {
   text-align: right;
@@ -518,13 +517,180 @@ button.ticket:active {
   font-weight: 500;
 }
 
+/* ---------- BookMyShow-style event / poster cards ---------- */
+.listing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+@media (max-width: 359px) {
+  .listing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 720px) {
+  .listing-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+}
+@media (min-width: 1100px) {
+  .listing-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+@media (min-width: 1500px) {
+  .listing-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  padding: 0;
+  transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s;
+}
+.event-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+  border-color: var(--brand-border);
+}
+.event-card:active {
+  transform: translateY(0);
+}
+.event-poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+}
+.event-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.event-emoji {
+  font-size: 42px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.28));
+}
+.event-cat {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(17, 10, 28, 0.72);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+.event-urgent {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+}
+.event-sold {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 19, 31, 0.55);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.event-body {
+  padding: 9px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.event-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-venue,
+.event-when {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 6px;
+}
+.event-price-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.event-price-block .price {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-foot-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.event-save {
+  color: var(--trust);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.selling-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.empty-card {
+  text-align: center;
+  padding: 22px 16px;
+  margin-top: 12px;
+}
+
 /* ------------------------------- header ---------------------- */
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .top h2 {
   display: flex;
@@ -532,8 +698,8 @@ button.ticket:active {
   gap: 6px;
 }
 .icon-btn {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -556,7 +722,7 @@ button.ticket:active {
 
 /* ------------------------------- inputs ---------------------- */
 .field {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .field label {
   display: block;
@@ -571,7 +737,7 @@ button.ticket:active {
 .field input,
 .field textarea {
   width: 100%;
-  padding: 13px 15px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--line);
   background: var(--surface-2);
@@ -592,7 +758,7 @@ button.ticket:active {
   background: var(--surface);
   border: 1.5px solid var(--line);
   border-radius: 999px;
-  padding: 12px 18px;
+  padding: 11px 16px;
   color: var(--muted);
   box-shadow: var(--shadow-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -612,7 +778,19 @@ button.ticket:active {
   outline: none;
 }
 
-/* toggle */
+.search-filters {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+@media (min-width: 900px) {
+  .search-filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+    align-items: end;
+  }
+}
+
 .toggle {
   position: relative;
   width: 46px;
@@ -641,20 +819,18 @@ button.ticket:active {
   transform: translateX(19px);
 }
 
-/* range slider */
 input[type="range"] {
   width: 100%;
   accent-color: var(--brand);
 }
 
-/* upload placeholder */
 .upload {
   width: 100%;
   border: 1.5px dashed var(--brand-border);
   background: var(--brand-soft-2);
   color: var(--brand);
   border-radius: var(--radius-sm);
-  padding: 24px 14px;
+  padding: 20px 14px;
   font-weight: 700;
   font-size: 13.5px;
   transition: background 0.15s, border-color 0.15s;
@@ -662,6 +838,26 @@ input[type="range"] {
 .upload:hover {
   background: var(--brand-soft);
   border-color: var(--brand);
+}
+
+.form-wide {
+  margin-top: 16px;
+}
+@media (min-width: 800px) {
+  .form-wide {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+    max-width: 920px;
+  }
+  .form-wide .field-span {
+    grid-column: 1 / -1;
+  }
+}
+.form-actions {
+  margin-top: auto;
+  padding-top: 18px;
+  max-width: 920px;
 }
 
 /* ------------------------------- bottom nav ------------------ */
@@ -678,7 +874,7 @@ input[type="range"] {
   -webkit-backdrop-filter: saturate(180%) blur(16px);
   border-top: 1px solid var(--line);
   box-shadow: 0 -8px 24px -18px rgba(23, 18, 37, 0.4);
-  padding: 9px 6px calc(10px + env(safe-area-inset-bottom));
+  padding: 8px 6px calc(10px + env(safe-area-inset-bottom));
   z-index: 20;
 }
 .bottom-nav button {
@@ -721,8 +917,6 @@ input[type="range"] {
 .bottom-nav .nav-post span:last-child {
   color: var(--brand);
 }
-/* unread badge — on the Messages nav icon, and reused (position:static) as a
-   count pill in the inbox rows */
 .nav-badge {
   position: absolute;
   top: -7px;
@@ -740,14 +934,11 @@ input[type="range"] {
   text-align: center;
   box-shadow: 0 2px 6px -1px rgba(23, 18, 37, 0.35);
 }
-/* tablet tier: centre the bar under the app column and frame its sides */
-@media (min-width: 600px) {
+/* tablet: full-width bar under the now-full-width content */
+@media (min-width: 600px) and (max-width: 899px) {
   .bottom-nav {
-    max-width: var(--tablet-col);
-    border-left: 1px solid var(--line);
-    border-right: 1px solid var(--line);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
+    max-width: 100%;
+    border-radius: 0;
   }
 }
 /* on wide screens the bottom bar becomes a fixed left sidebar */
@@ -775,7 +966,6 @@ input[type="range"] {
     box-shadow: none;
     padding: 22px 14px;
   }
-  /* brand wordmark at the top of the sidebar */
   .bottom-nav::before {
     content: "SwapMyShow";
     font-family: var(--display);
@@ -813,7 +1003,6 @@ input[type="range"] {
   .bottom-nav button.on .nav-icon {
     transform: none;
   }
-  /* reset the floating "Sell" pill into a normal brand sidebar item */
   .bottom-nav .nav-post {
     background: var(--brand-grad);
     margin-top: 6px;
@@ -874,7 +1063,6 @@ input[type="range"] {
   padding: 4px 2px 12px;
 }
 
-/* 3-step tracker */
 .tracker {
   display: flex;
   align-items: center;
@@ -934,7 +1122,6 @@ input[type="range"] {
   background: var(--brand-grad);
 }
 
-/* safety nudge */
 .nudge {
   display: flex;
   gap: 8px;
@@ -964,8 +1151,8 @@ input[type="range"] {
   width: 100%;
 }
 .avatar {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -977,10 +1164,10 @@ input[type="range"] {
   box-shadow: var(--shadow-sm);
 }
 .avatar-lg {
-  width: 76px;
-  height: 76px;
+  width: 72px;
+  height: 72px;
   font-size: 28px;
-  border-radius: 26px;
+  border-radius: 24px;
 }
 .stars {
   display: flex;
@@ -1023,14 +1210,12 @@ input[type="range"] {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 18px 0 10px;
+  margin: 14px 0 8px;
 }
 .stack {
   display: grid;
-  /* minmax(0,1fr) — not the default `auto` — so wide children (long
-     titles, price columns) shrink to the column instead of overflowing. */
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 /* horizontal discovery strip (Home "Tonight's deals") */
@@ -1046,13 +1231,14 @@ input[type="range"] {
 }
 .hcard {
   flex: 0 0 auto;
-  width: 158px;
+  width: 148px;
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  padding: 10px;
+  padding: 0;
+  overflow: hidden;
   transition: transform 0.16s ease, box-shadow 0.2s ease, border-color 0.16s;
 }
 .hcard:hover {
@@ -1060,15 +1246,14 @@ input[type="range"] {
   box-shadow: var(--shadow);
   border-color: var(--brand-border);
 }
-/* poster fill comes from the .poster-cat-* class applied alongside this one */
 .hcard-poster {
   position: relative;
   width: 100%;
-  height: 92px;
-  border-radius: var(--radius-sm);
+  height: 188px;
+  border-radius: 0;
   display: grid;
   place-items: center;
-  font-size: 34px;
+  font-size: 36px;
   color: #fff;
   overflow: hidden;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
@@ -1081,9 +1266,9 @@ input[type="range"] {
 .hcard-title {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13.5px;
   letter-spacing: -0.01em;
-  margin-top: 8px;
+  margin: 8px 10px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1091,10 +1276,13 @@ input[type="range"] {
 .hcard-meta {
   font-size: 11.5px;
   color: var(--muted);
-  margin-top: 2px;
+  margin: 2px 10px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.hcard-foot {
+  margin: 8px 10px 10px;
 }
 .row {
   display: flex;
@@ -1131,5 +1319,268 @@ input[type="range"] {
 .tab-row {
   display: flex;
   gap: 8px;
-  margin: 16px 0;
+  margin: 14px 0;
+}
+
+/* ------------------------------- home hero ------------------- */
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 15px;
+  border-radius: var(--radius);
+  background: var(--brand-grad);
+  color: #fff;
+  box-shadow: var(--shadow-brand);
+  margin-bottom: 6px;
+}
+.home-hero-kicker {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+.home-hero h1 {
+  color: #fff;
+  font-size: 24px;
+  margin-top: 2px;
+}
+.home-hero p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 42em;
+}
+.home-hero-cta {
+  background: #fff;
+  color: var(--brand-deep);
+  box-shadow: none;
+  width: auto;
+  align-self: flex-start;
+}
+.home-hero-cta:hover:not(:disabled) {
+  filter: none;
+  background: #f7f3ff;
+  box-shadow: none;
+}
+@media (min-width: 720px) {
+  .home-hero {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 22px 24px;
+  }
+  .home-hero h1 {
+    font-size: 28px;
+  }
+  .home-hero-cta {
+    align-self: center;
+  }
+}
+
+/* ------------------------------- listing detail -------------- */
+.listing-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.listing-hero-body {
+  padding: 14px;
+}
+.listing-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.listing-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.listing-facts .muted {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.listing-aside {
+  display: grid;
+  gap: 12px;
+}
+.listing-cta {
+  margin-top: 0;
+}
+@media (min-width: 900px) {
+  .listing-layout {
+    display: grid;
+    grid-template-columns: 1.35fr 0.9fr;
+    gap: 22px;
+    align-items: start;
+  }
+  .listing-facts {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .listing-aside {
+    position: sticky;
+    top: 20px;
+  }
+}
+
+/* ------------------------------- profile / inbox ------------- */
+.profile-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.inbox-list {
+  display: grid;
+  gap: 10px;
+}
+.inbox-row {
+  padding: 10px 12px;
+}
+@media (min-width: 900px) {
+  .profile-head {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .inbox-list {
+    max-width: 860px;
+  }
+}
+
+/* ------------------------------- auth (login / add phone) ---- */
+.auth-screen {
+  padding: 0;
+  gap: 0;
+  justify-content: flex-start;
+  min-height: 100svh;
+}
+.auth-brand {
+  background: var(--brand-grad);
+  color: #fff;
+  padding: 22px 18px 20px;
+}
+.auth-brand-inner {
+  max-width: 420px;
+}
+.auth-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  margin-bottom: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.auth-brand h1 {
+  color: #fff;
+  font-size: 24px;
+}
+.auth-brand p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 14px;
+}
+.auth-points {
+  display: none;
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  gap: 10px;
+}
+.auth-points li {
+  position: relative;
+  padding-left: 22px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 600;
+}
+.auth-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  font-weight: 800;
+}
+.auth-panel {
+  padding: 16px 14px 28px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.auth-panel-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.auth-trust {
+  text-align: center;
+  margin-top: 14px;
+}
+@media (min-width: 900px) {
+  .auth-shell,
+  .auth-screen {
+    max-width: none !important;
+    margin: 0 !important;
+    width: 100%;
+  }
+  .auth-screen {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    min-height: 100svh;
+    padding: 0 !important;
+  }
+  .auth-brand {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding: 48px 56px;
+  }
+  .auth-brand h1 {
+    font-size: 40px;
+  }
+  .auth-brand p {
+    font-size: 16px;
+  }
+  .auth-points {
+    display: grid;
+  }
+  .auth-panel {
+    justify-content: center;
+    padding: 40px 48px;
+  }
+  .auth-panel-card {
+    max-width: 440px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 22px;
+  }
+  .auth-trust {
+    max-width: 440px;
+    margin: 14px auto 0;
+  }
 }

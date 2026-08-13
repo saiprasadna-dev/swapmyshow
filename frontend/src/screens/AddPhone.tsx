@@ -30,50 +30,54 @@ export default function AddPhone({
   };
 
   return (
-    <div className="screen no-nav" style={{ justifyContent: "center", gap: 18 }}>
-      <div style={{ textAlign: "center" }}>
-        <h1>One last thing</h1>
-        <p className="muted" style={{ margin: "6px 0 0" }}>
-          Add your phone number so buyers and sellers can reach you for the swap.
-        </p>
-      </div>
-
-      <div className="ticket" style={{ padding: 18 }}>
-        <div className="field" style={{ marginBottom: 12 }}>
-          <label htmlFor="phone">Phone</label>
-          <input
-            id="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="+91 98765 43210"
-            value={phone}
-            onChange={(e) => setPhoneValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-          />
+    <div className="screen no-nav auth-screen">
+      <aside className="auth-brand">
+        <div className="auth-brand-inner">
+          <div className="auth-mark" aria-hidden>
+            S
+          </div>
+          <h1>One last thing</h1>
+          <p>Add your phone so buyers and sellers can reach you for the swap.</p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={submit}
-          disabled={busy || !phoneOk(phone)}
-        >
-          {busy ? "Saving…" : "Continue"}
-        </button>
-        <p className="small muted" style={{ margin: "10px 0 0", textAlign: "center" }}>
-          Stored for the swap, not verified. It can't be changed later.
-        </p>
-        {error && (
-          <p className="small" role="alert" style={{ color: "var(--danger)", margin: "10px 0 0", textAlign: "center" }}>
-            {error}
+      </aside>
+
+      <div className="auth-panel">
+        <div className="auth-panel-card">
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label htmlFor="phone">Phone</label>
+            <input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+91 98765 43210"
+              value={phone}
+              onChange={(e) => setPhoneValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+          </div>
+          <button
+            className="btn btn-primary"
+            onClick={submit}
+            disabled={busy || !phoneOk(phone)}
+          >
+            {busy ? "Saving…" : "Continue"}
+          </button>
+          <p className="small muted" style={{ margin: "10px 0 0", textAlign: "center" }}>
+            Stored for the swap, not verified. It can&apos;t be changed later.
           </p>
+          {error && (
+            <p className="small" role="alert" style={{ color: "var(--danger)", margin: "10px 0 0", textAlign: "center" }}>
+              {error}
+            </p>
+          )}
+        </div>
+        {onSignOut && (
+          <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={onSignOut}>
+            Sign out
+          </button>
         )}
       </div>
-
-      {onSignOut && (
-        <button className="btn btn-ghost" onClick={onSignOut}>
-          Sign out
-        </button>
-      )}
     </div>
   );
 }

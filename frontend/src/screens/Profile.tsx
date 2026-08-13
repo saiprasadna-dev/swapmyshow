@@ -76,33 +76,33 @@ export default function Profile({
 
   return (
     <div className="screen">
-      <div style={{ textAlign: "center", marginTop: 8 }}>
+      <div className="profile-head">
         {user?.picture ? (
           <img
             className="avatar avatar-lg"
             src={user.picture}
             alt=""
             referrerPolicy="no-referrer"
-            style={{ margin: "0 auto 10px", objectFit: "cover" }}
+            style={{ objectFit: "cover" }}
           />
         ) : (
-          <div className="avatar avatar-lg" style={{ margin: "0 auto 10px" }}>
-            {name[0]}
+          <div className="avatar avatar-lg">{name[0]}</div>
+        )}
+        <div className="profile-head-copy">
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            <h2>{name}</h2>
+            {trustBadge}
           </div>
-        )}
-        <div className="row" style={{ justifyContent: "center", gap: 6 }}>
-          <h2>{name}</h2>
-          {trustBadge}
-        </div>
-        {user?.email && (
-          <p className="small muted" style={{ margin: "4px 0 0" }}>
-            {user.email}
-            {user.phone ? ` · ${user.phone}` : ""}
+          {user?.email && (
+            <p className="small muted" style={{ margin: "4px 0 0" }}>
+              {user.email}
+              {user.phone ? ` · ${user.phone}` : ""}
+            </p>
+          )}
+          <p className="small muted" style={{ margin: "2px 0 0" }}>
+            ★ {rating.toFixed(1)} · {swaps} {swaps === 1 ? "swap" : "swaps"}
           </p>
-        )}
-        <p className="small muted" style={{ margin: "2px 0 0" }}>
-          ★ {rating.toFixed(1)} · {swaps} {swaps === 1 ? "swap" : "swaps"}
-        </p>
+        </div>
       </div>
 
       {user?.phone && !user.phoneVerified && onUser && (
@@ -124,10 +124,10 @@ export default function Profile({
         ))}
       </div>
 
-      <div className="stack">
+      <div className="listing-grid">
         {tab === "Selling" &&
           selling.map((l) => (
-            <div key={l.id} style={{ display: "grid", gap: 8 }}>
+            <div key={l.id} className="selling-item">
               <TicketCard
                 listing={l}
                 onOpen={
@@ -170,14 +170,14 @@ export default function Profile({
               onOpen={() => go({ name: "listing", id: l.id })}
             />
           ))}
-        {((tab === "Selling" && selling.length === 0) ||
-          (tab === "Bought" && bought.length === 0) ||
-          (tab === "Saved" && saved.length === 0)) && (
-          <p className="small muted" style={{ textAlign: "center", padding: 20 }}>
-            Nothing here yet.
-          </p>
-        )}
       </div>
+      {((tab === "Selling" && selling.length === 0) ||
+        (tab === "Bought" && bought.length === 0) ||
+        (tab === "Saved" && saved.length === 0)) && (
+        <p className="small muted empty-card" style={{ textAlign: "center", padding: 20 }}>
+          Nothing here yet.
+        </p>
+      )}
 
       {recentSwap && (
         <button
